@@ -1,5 +1,10 @@
 <template>
   <section v-if="project" class="project-detail">
+    <div v-if="!canViewProject" class="access-toast">
+      Nie jestes przypisany do tego projektu.
+    </div>
+
+    <template v-if="canViewProject">
     <section class="project-page">
       <div class="project-header">
         <div>
@@ -17,7 +22,8 @@
       <div class="section-header">
         <h2>Zadania projektu</h2>
 
-        <button class="add-task-button" @click="showTaskForm = true">
+        <button
+        class="add-task-button" @click="showTaskForm = true">
           Dodaj zadanie
         </button>
       </div>
@@ -89,6 +95,7 @@
         </form>
       </div>
     </div>
+    </template>
   </section>
 
   <section v-else class="project-page">
@@ -102,6 +109,7 @@ import { computed, ref } from 'vue'
 import { tasks } from '~/data/tasks'
 import { projects } from '~/data/projects'
 
+const { loggedUser } = useAuth()
 const showTaskForm = ref(false)
 const localTasks = ref([...tasks])
 const taskForm = ref({
@@ -147,6 +155,18 @@ const submitTask = () => {
 
   closeTaskForm()
 }
+
+const canViewProject = computed(() => {
+  if (!loggedUser.value) {
+    return false
+  }
+
+  if (loggedUser.value.role === 'szef') {
+    return true
+  }
+
+  return project?.userIds?.includes(loggedUser.value.id) ?? false
+})
 </script>
 
 <style scoped>
@@ -156,6 +176,24 @@ const submitTask = () => {
 
 .project-page {
   padding: 8px;
+}
+
+.access-toast {
+  position: fixed;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  min-width: 280px;
+  max-width: 420px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  box-shadow: 0 18px 40px rgba(127, 29, 29, 0.18);
+  font-weight: 600;
+  text-align: center;
 }
 
 .project-header {

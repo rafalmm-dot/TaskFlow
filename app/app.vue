@@ -1,12 +1,18 @@
+<script setup>
+const { loggedUser } = useAuth()
+</script>
+
 <template>
   <div class="app">
-    <div class="layout">
+    <div class="layout" :class="{ 'layout--locked': !loggedUser }">
       <Sidebar />
 
       <main class="content">
         <NuxtPage />
       </main>
     </div>
+
+    <LoginScreen v-if="!loggedUser" />
   </div>
 </template>
 
@@ -43,6 +49,11 @@ body {
   border-radius: 34px;
   backdrop-filter: blur(18px);
   overflow: hidden;
+}
+
+.layout--locked {
+  pointer-events: none;
+  user-select: none;
 }
 
 .content {

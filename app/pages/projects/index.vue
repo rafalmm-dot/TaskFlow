@@ -1,5 +1,13 @@
 <template>
   <section class="projects-page">
+    <div v-if="accessToast" class="access-toast" role="alert" aria-live="polite">
+      <span class="access-toast__accent" />
+      <div class="access-toast__content">
+        <strong>Brak dostepu</strong>
+        <p>{{ accessToast }}</p>
+      </div>
+    </div>
+
     <div class="page-header">
       <span class="page-header__eyebrow">Panel glowny</span>
       <h1>Projekty</h1>
@@ -13,23 +21,26 @@
       </div>
 
       <div class="projects-list">
-        <NuxtLink
+        <button
           v-for="project in projects"
           :key="project.id"
-          :to="`/projects/${project.id}`"
           class="projects-list__link"
+          type="button"
+          @click="openProject(project)"
         >
           <ProjectTitle
             :title="project.title"
             :deadline="project.deadline"
             :status="project.status"
           />
-        </NuxtLink>
+        </button>
       </div>
     </section>
 
     <div class="floating-actions">
-      <button class="floating-actions__button floating-actions__button--primary">
+      <button
+        v-if="loggedUser?.role === 'szef'"
+       class="floating-actions__button floating-actions__button--primary">
         Dodaj projekt
       </button>
     </div>
@@ -37,7 +48,37 @@
 </template>
 
 <script setup>
+const { loggedUser } = useAuth()
+const accessToast = ref('')
+
 import { projects } from '~/data/projects'
+
+function canViewProject(project) {
+  if (!loggedUser.value) {
+    return false
+  }
+
+  if (loggedUser.value.role === 'szef') {
+    return true
+  }
+
+  return project.userIds?.includes(loggedUser.value.id) ?? false
+}
+
+function openProject(project) {
+  if (canViewProject(project)) {
+    navigateTo(`/projects/${project.id}`)
+    return
+  }
+
+  accessToast.value = 'Nie jestes przypisany do tego projektu.'
+
+  setTimeout(() => {
+    if (accessToast.value) {
+      accessToast.value = ''
+    }
+  }, 3000)
+}
 </script>
 
 <style scoped>
@@ -46,6 +87,68 @@ import { projects } from '~/data/projects'
   min-height: 100%;
   padding: 8px;
   padding-bottom: 96px;
+}
+
+.access-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  width: min(100%, 440px);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 20px;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow:
+    0 22px 50px rgba(15, 23, 42, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  animation: access-toast-in 0.22s ease;
+}
+
+.access-toast__accent {
+  width: 4px;
+  align-self: stretch;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ef4444 0%, #f97316 100%);
+}
+
+.access-toast__content {
+  min-width: 0;
+}
+
+.access-toast__content strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.access-toast__content p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+@keyframes access-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .page-header {
@@ -126,9 +229,14 @@ import { projects } from '~/data/projects'
 
 .projects-list__link {
   display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
   border-radius: 16px;
   color: inherit;
+  background: transparent;
   text-decoration: none;
+  cursor: pointer;
   transition: transform 0.2s ease;
 }
 
