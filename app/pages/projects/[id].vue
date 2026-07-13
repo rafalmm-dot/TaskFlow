@@ -5,6 +5,12 @@
     </div>
 
     <template v-if="canViewProject">
+      <div class="project-actions">
+        <NuxtLink to="/projects" class="project-actions__back">
+          ← Wróć do projektów
+        </NuxtLink>
+      </div>
+
     <section class="project-page">
       <div class="project-header">
         <div>
@@ -380,5 +386,24 @@ const canViewProject = computed(() => {
   color: white;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
+}
+
+.project-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 8px;
+}
+
+.project-actions__back {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.project-actions__back:hover {
+  color: #2563eb;
 }
 </style>

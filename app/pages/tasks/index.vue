@@ -4,6 +4,11 @@ import { tasks } from '~/data/tasks'
 
 const { loggedUser } = useAuth()
 const accessToast = ref('')
+const normalizeStatus = (status) =>
+  (status || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
 
 const visibleTasks = computed(() => {
   if (!loggedUser.value) {
@@ -90,9 +95,9 @@ function openTask(task) {
               <span
                 class="task-card__status"
                 :class="{
-                  'task-card__status--todo': task.status === 'Do zrobienia',
-                  'task-card__status--progress': task.status === 'W trakcie',
-                  'task-card__status--done': task.status === 'Zakonczone'
+                  'task-card__status--todo': normalizeStatus(task.status) === 'do zrobienia',
+                  'task-card__status--progress': normalizeStatus(task.status) === 'w trakcie',
+                  'task-card__status--done': normalizeStatus(task.status) === 'zakonczone'
                 }"
               >
                 {{ task.status }}
