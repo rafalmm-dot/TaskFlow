@@ -8,6 +8,15 @@ import { projects } from '~/data/projects'
 
 const latestTasks = computed(() => tasks.slice(0, 3))
 const latestProjects = computed(() => projects.slice(0, 3))
+const normalizeStatus = (status) =>
+  (status || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+const isTodoTask = (task) => normalizeStatus(task.status) === 'do zrobienia'
+const isInProgressTask = (task) => normalizeStatus(task.status) === 'w trakcie'
+const isDoneTask = (task) => normalizeStatus(task.status) === 'zakonczone'
 
 const dashboardCards = computed(() => [
   {
@@ -20,15 +29,15 @@ const dashboardCards = computed(() => [
   },
   {
     label: 'Do zrobienia',
-    number: tasks.filter((task) => task.status === 'Do zrobienia').length
+    number: tasks.filter(isTodoTask).length
   },
   {
     label: 'W trakcie',
-    number: tasks.filter((task) => task.status === 'W trakcie').length
+    number: tasks.filter(isInProgressTask).length
   },
   {
     label: 'Zakonczone',
-    number: tasks.filter((task) => task.status === 'Zakonczone').length
+    number: tasks.filter(isDoneTask).length
   }
 ])
 </script>
