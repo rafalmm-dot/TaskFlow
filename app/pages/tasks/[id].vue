@@ -1,13 +1,19 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { tasks } from '~/data/tasks'
 import { users } from '~/data/users'
+
+ 
 
 const { loggedUser } = useAuth()
 const route = useRoute()
 const currentTaskId = Number(route.params.id)
 
-const task = tasks.find((taskItem) => taskItem.id === currentTaskId)
+const foundTask = tasks.find(
+  (taskItem) => taskItem.id === currentTaskId
+)
+
+const task = foundTask ? reactive(foundTask) : null
 
 const canViewTask = computed(() => {
   if (!loggedUser.value) {
@@ -43,6 +49,82 @@ const taskAuthor = computed(() => {
 const assignedPeopleCount = computed(() => {
   return assignedUsers.value.length
 })
+const workerUsers = computed(() => {
+  return users.filter((user) => user.role === 'pracownik')
+})
+
+const isEditing = ref(false)
+const formError = ref('')
+
+const form = reactive({
+  title: '',
+  description: '',
+  status: '',
+  priority: '',
+  deadline: '',
+  assignedUserIds: []
+})
+
+function startEdit() {
+  if (!task) {
+    return
+  }
+
+  form.title = task.title
+  form.description = task.description
+  form.status = task.status
+  form.priority = task.priority
+  form.deadline = task.deadline
+  form.assignedUserIds = [...(task.assignedUserIds ?? [])]
+
+  formError.value = ''
+  isEditing.value = true
+}
+function cancelEdit() {
+  isEditing.value = false
+  formError.value = ''
+}
+
+function saveTask() {
+  if (!task || !loggedUser.value) {
+    return
+  }
+
+  formError.value = ''
+
+  if (loggedUser.value.role === 'szef') {
+    if (!form.title.trim()) {
+      formError.value = 'Tytuł zadania nie może być pusty.'
+      return
+    }
+
+    if (!form.description.trim()) {
+      formError.value = 'Opis zadania nie może być pusty.'
+      return
+    }
+
+    if (!form.deadline) {
+      formError.value = 'Wybierz termin wykonania zadania.'
+      return
+    }
+
+    if (form.assignedUserIds.length === 0) {
+      formError.value = 'Przypisz przynajmniej jedną osobę.'
+      return
+    }
+
+    task.title = form.title.trim()
+    task.description = form.description.trim()
+    task.priority = form.priority
+    task.deadline = form.deadline
+    task.assignedUserIds = [...form.assignedUserIds]
+  }
+
+  task.status = form.status
+
+  formError.value = ''
+  isEditing.value = false
+}
 </script>
 
 <template>
@@ -58,12 +140,13 @@ const assignedPeopleCount = computed(() => {
   </NuxtLink>
 
   <div class="task-actions__buttons">
-    <button
-      type="button"
-      class="task-actions__edit"
-    >
-      Edytuj
-    </button>
+<button
+  type="button"
+  class="task-actions__edit"
+  @click="startEdit"
+>
+  Edytuj
+</button>
 
     <button
       v-if="loggedUser?.role === 'szef'"
@@ -142,8 +225,9 @@ const assignedPeopleCount = computed(() => {
       v-if="loggedUser?.role === 'szef'"
       type="button"
       class="task-people__add-button"
+      @click="startEdit"
     >
-      Dodaj osobę
+      Przypisz osobę
     </button>
   </div>
 
@@ -197,6 +281,165 @@ const assignedPeopleCount = computed(() => {
     Nie znaleziono informacji o autorze zadania.
   </p>
 </section>
+<div
+  v-if="isEditing"
+  class="edit-modal"
+  @click.self="cancelEdit"
+>
+  <form
+    class="edit-modal__content"
+    @submit.prevent="saveTask"
+  >
+    <div class="edit-modal__header">
+      <div>
+        <h2>Edytuj zadanie</h2>
+
+        <p v-if="loggedUser?.role === 'pracownik'">
+          Możesz zmienić wyłącznie status zadania.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="edit-modal__close"
+        aria-label="Zamknij formularz"
+        @click="cancelEdit"
+      >
+        ×
+      </button>
+    </div>
+
+    <p v-if="formError" class="edit-modal__error">
+      {{ formError }}
+    </p>
+
+    <div class="edit-modal__form">
+      <template v-if="loggedUser?.role === 'szef'">
+        <div class="edit-modal__field">
+          <label for="edit-task-title">
+            Tytuł zadania
+          </label>
+
+          <input
+            id="edit-task-title"
+            v-model="form.title"
+            type="text"
+          >
+        </div>
+
+        <div class="edit-modal__field edit-modal__field--full">
+          <label for="edit-task-description">
+            Opis zadania
+          </label>
+
+          <textarea
+            id="edit-task-description"
+            v-model="form.description"
+            rows="6"
+          ></textarea>
+        </div>
+
+        <div class="edit-modal__field">
+          <label for="edit-task-priority">
+            Priorytet
+          </label>
+
+          <select
+            id="edit-task-priority"
+            v-model="form.priority"
+          >
+            <option value="Niski">Niski</option>
+            <option value="Średni">Średni</option>
+            <option value="Wysoki">Wysoki</option>
+          </select>
+        </div>
+
+        <div class="edit-modal__field">
+          <label for="edit-task-deadline">
+            Termin wykonania
+          </label>
+
+          <input
+            id="edit-task-deadline"
+            v-model="form.deadline"
+            type="date"
+          >
+        </div>
+      </template>
+
+      <div class="edit-modal__field">
+        <label for="edit-task-status">
+          Status
+        </label>
+
+        <select
+          id="edit-task-status"
+          v-model="form.status"
+        >
+          <option value="Do zrobienia">
+            Do zrobienia
+          </option>
+
+          <option value="W trakcie">
+            W trakcie
+          </option>
+
+          <option value="Zakończone">
+            Zakończone
+          </option>
+        </select>
+      </div>
+
+      <fieldset
+        v-if="loggedUser?.role === 'szef'"
+        class="edit-modal__people"
+      >
+        <legend>Osoby przypisane do zadania</legend>
+
+        <label
+          v-for="user in workerUsers"
+          :key="user.id"
+          class="edit-modal__person"
+        >
+          <input
+            v-model="form.assignedUserIds"
+            type="checkbox"
+            :value="user.id"
+          >
+
+          <span class="edit-modal__avatar">
+            {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
+          </span>
+
+          <span>
+            <strong>
+              {{ user.name }} {{ user.surname }}
+            </strong>
+
+            <small>{{ user.role }}</small>
+          </span>
+        </label>
+      </fieldset>
+    </div>
+
+    <div class="edit-modal__actions">
+      <button
+        type="button"
+        class="edit-modal__cancel"
+        @click="cancelEdit"
+      >
+        Anuluj
+      </button>
+
+      <button
+        type="submit"
+        class="edit-modal__save"
+      >
+        Zapisz zmiany
+      </button>
+    </div>
+  </form>
+</div>
 </template>
 
 <style scoped>
@@ -498,5 +741,261 @@ const assignedPeopleCount = computed(() => {
 
 .task-actions__delete:hover {
   background: #fef2f2;
+}
+.edit-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(5px);
+}
+
+.edit-modal__content {
+  width: 100%;
+  max-width: 760px;
+  max-height: calc(100vh - 48px);
+
+  padding: 26px;
+  overflow-y: auto;
+
+  border-radius: 24px;
+  background: #ffffff;
+
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+}
+
+.edit-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+
+  margin-bottom: 22px;
+}
+
+.edit-modal__header h2 {
+  margin: 0;
+
+  color: #111827;
+  font-size: 24px;
+}
+
+.edit-modal__header p {
+  margin: 7px 0 0;
+
+  color: #64748b;
+  font-size: 14px;
+}
+
+.edit-modal__close {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 50%;
+
+  color: #475569;
+  background: #f1f5f9;
+
+  font-size: 25px;
+  cursor: pointer;
+}
+
+.edit-modal__close:hover {
+  color: #111827;
+  background: #e2e8f0;
+}
+
+.edit-modal__error {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+
+  color: #b91c1c;
+  background: #fef2f2;
+
+  font-size: 14px;
+}
+
+.edit-modal__form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.edit-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-modal__field--full {
+  grid-column: 1 / -1;
+}
+
+.edit-modal__field label,
+.edit-modal__people legend {
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.edit-modal__field input,
+.edit-modal__field textarea,
+.edit-modal__field select {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 12px 14px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+
+  color: #111827;
+  background: #ffffff;
+
+  font: inherit;
+  outline: none;
+}
+
+.edit-modal__field input:focus,
+.edit-modal__field textarea:focus,
+.edit-modal__field select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.edit-modal__field textarea {
+  min-height: 130px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.edit-modal__people {
+  grid-column: 1 / -1;
+
+  margin: 0;
+  padding: 18px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+
+.edit-modal__people legend {
+  padding: 0 7px;
+}
+
+.edit-modal__person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-top: 12px;
+  padding: 12px;
+
+  border-radius: 12px;
+  background: #f8fafc;
+
+  cursor: pointer;
+}
+
+.edit-modal__person:hover {
+  background: #f1f5f9;
+}
+
+.edit-modal__person input {
+  width: 18px;
+  height: 18px;
+
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.edit-modal__avatar {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  color: #1d4ed8;
+  background: #dbeafe;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.edit-modal__person strong,
+.edit-modal__person small {
+  display: block;
+}
+
+.edit-modal__person strong {
+  color: #111827;
+}
+
+.edit-modal__person small {
+  margin-top: 3px;
+
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.edit-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+
+  margin-top: 24px;
+}
+
+.edit-modal__cancel,
+.edit-modal__save {
+  padding: 11px 18px;
+
+  border-radius: 12px;
+
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.edit-modal__cancel {
+  border: 1px solid #cbd5e1;
+
+  color: #475569;
+  background: #ffffff;
+}
+
+.edit-modal__cancel:hover {
+  background: #f8fafc;
+}
+
+.edit-modal__save {
+  border: none;
+
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.edit-modal__save:hover {
+  background: #1d4ed8;
 }
 </style>

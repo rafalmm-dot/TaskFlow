@@ -19,6 +19,7 @@ const { loggedUser } = useAuth()
 <style>
 html,
 body {
+  
   margin: 0;
   height: 100%;
   overflow: hidden;
@@ -30,7 +31,7 @@ body {
 
 .app {
   height: 100vh;
-  padding: 14px;
+  padding: 6px;
   font-family: Arial, sans-serif;
   background:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.1), transparent 28%),
@@ -39,14 +40,14 @@ body {
 }
 
 .layout {
-  height: calc(100vh - 28px);
-  padding: 16px;
+  height: calc(100vh - 12px);
+  padding: 8px;
   display: flex;
   align-items: stretch;
-  gap: 16px;
+  gap: 8px;
   background: rgba(255, 255, 255, 0.58);
   border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 34px;
+  border-radius: 22px;
   backdrop-filter: blur(18px);
   overflow: hidden;
 }
@@ -59,11 +60,11 @@ body {
 .content {
   flex: 1;
   height: 100%;
-  padding: 40px 40px 56px;
+  padding: 18px 18px 24px;
   background: rgba(255, 255, 255, 0.92);
-  border-radius: 28px;
+  border-radius: 18px;
   border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;

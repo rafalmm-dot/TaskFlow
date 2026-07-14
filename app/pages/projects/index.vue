@@ -28,11 +28,12 @@
           type="button"
           @click="openProject(project)"
         >
-          <ProjectTitle
-            :title="project.title"
-            :deadline="project.deadline"
-            :status="project.status"
-          />
+       <ProjectTitle
+  :title="project.title"
+  :deadline="project.deadline"
+  :status="project.status"
+  :team="getProjectUsers(project)"
+/>
         </button>
       </div>
     </section>
@@ -52,6 +53,13 @@ const { loggedUser } = useAuth()
 const accessToast = ref('')
 
 import { projects } from '~/data/projects'
+import { users } from '~/data/users'
+
+function getProjectUsers(project) {
+  return users.filter((user) =>
+    project.userIds?.includes(user.id)
+  )
+}
 
 function canViewProject(project) {
   if (!loggedUser.value) {

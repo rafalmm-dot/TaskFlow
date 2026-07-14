@@ -33,30 +33,30 @@ const statusClass = computed(() => {
 
 <style scoped>
 .task {
-  padding: 16px 0;
+  padding: 9px 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   border-top: 1px solid #e5e7eb;
 }
 
 .task__title {
-  margin: 0 0 6px;
+  margin: 0 0 3px;
   color: #111827;
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .task__project {
   margin: 0;
   color: #6b7280;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .task__status {
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   white-space: nowrap;
 }

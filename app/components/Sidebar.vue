@@ -66,17 +66,17 @@ function handleLogout() {
 
 <style scoped>
 .sidebar {
-  width: 240px;
+  width: 172px;
   height: 100%;
   flex-shrink: 0;
-  padding: 32px 24px;
+  padding: 18px 14px;
   display: flex;
   flex-direction: column;
   background:
     radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 26%),
     linear-gradient(180deg, #0f172a 0%, #111827 100%);
   color: white;
-  border-radius: 28px;
+  border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   overflow: hidden;
@@ -84,23 +84,24 @@ function handleLogout() {
 
 .sidebar__logo {
   margin: 0;
-  font-size: 24px;
+  font-size: 18px;
   letter-spacing: -0.03em;
 }
 
 .sidebar__nav {
-  margin-top: 36px;
+  margin-top: 20px;
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 5px;
 }
 
 .sidebar__link {
-  padding: 12px 14px;
-  border-radius: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
   color: #cbd5e1;
   text-decoration: none;
+  font-size: 12px;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
@@ -113,7 +114,7 @@ function handleLogout() {
 .sidebar__link--active {
   color: white;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.22);
 }
 
 .sidebar-user {
@@ -122,10 +123,10 @@ function handleLogout() {
 
 .sidebar-user__card {
   width: 100%;
-  padding: 14px;
+  padding: 10px;
   display: block;
   border: 0;
-  border-radius: 16px;
+  border-radius: 12px;
   background: rgba(31, 41, 55, 0.95);
   border: 1px solid rgba(148, 163, 184, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
@@ -146,7 +147,7 @@ function handleLogout() {
   padding: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   border: 0;
   color: inherit;
   background: transparent;
@@ -155,14 +156,15 @@ function handleLogout() {
 }
 
 .sidebar-user__avatar {
-  width: 42px;
-  height: 42px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   color: white;
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   font-weight: 800;
+  font-size: 12px;
 }
 
 .sidebar-user__info {
@@ -173,23 +175,23 @@ function handleLogout() {
 
 .sidebar-user__info strong {
   color: white;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .sidebar-user__info small {
-  margin-top: 3px;
+  margin-top: 2px;
   color: #94a3b8;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: capitalize;
 }
 
 .sidebar-user__menu {
   position: absolute;
   right: 0;
-  bottom: calc(100% + 10px);
-  min-width: 140px;
-  padding: 8px;
-  border-radius: 14px;
+  bottom: calc(100% + 8px);
+  min-width: 112px;
+  padding: 5px;
+  border-radius: 10px;
   background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.9);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
@@ -197,12 +199,13 @@ function handleLogout() {
 
 .sidebar-user__menu-item {
   width: 100%;
-  padding: 10px 12px;
+  padding: 7px 9px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   color: #dc2626;
   background: transparent;
   font-weight: 700;
+  font-size: 12px;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
   text-align: left;
@@ -210,5 +213,11 @@ function handleLogout() {
 
 .sidebar-user__menu-item:hover {
   background: #fee2e2;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
 }
 </style>

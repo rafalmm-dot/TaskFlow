@@ -11,19 +11,19 @@
 <style scoped>
 .topbar {
   margin-bottom: 40px;
-  padding: 26px 30px;
+  padding: 20px 22px;
   border-radius: 24px;
   background:
     radial-gradient(circle at top right, rgba(37, 99, 235, 0.16), transparent 34%),
     linear-gradient(135deg, #fbfdff 0%, #edf4ff 100%);
   border: 1px solid rgba(148, 163, 184, 0.16);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
 }
 
 .topbar__eyebrow {
   display: inline-flex;
-  margin-bottom: 14px;
-  padding: 7px 12px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
   border-radius: 999px;
   color: #1d4ed8;
   background: rgba(255, 255, 255, 0.82);
@@ -41,7 +41,7 @@
 }
 
 .topbar__subtitle {
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   max-width: 640px;
   color: #64748b;
   font-size: 15px;
