@@ -252,117 +252,79 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { tasks } from '~/data/tasks'
-import { projects } from '~/data/projects'
-import { users } from '~/data/users'
-
 
 const { loggedUser } = useAuth()
-const showTaskForm = ref(false)
-const localTasks = ref([...tasks])
 const route = useRoute()
+
 const currentProjectId = Number(route.params.id)
-const project = projects.find(
-  (projectItem) => projectItem.id === currentProjectId
-)
-const isBoss = computed(() => loggedUser.value?.role === 'szef')
+
+const {
+  data: project,
+  pending: projectLoading,
+  error: projectError
+} = await useFetch(`/api/projects/${currentProjectId}`, {
+  default: () => null
+})
+
+const showTaskForm = ref(false)
+const submitError = ref('')
+const isSubmitting = ref(false)
+
+const localTasks = ref([
+  ...(project.value?.tasks ?? [])
+])
+
+const isBoss = computed(() => {
+  return loggedUser.value?.role === 'szef'
+})
+
 const currentWorker = computed(() => {
-  if (!loggedUser.value || loggedUser.value.role !== 'pracownik') {
+  if (
+    !loggedUser.value ||
+    loggedUser.value.role !== 'pracownik'
+  ) {
     return null
   }
 
-  return users.find((user) => user.id === loggedUser.value.id) ?? null
+  return (
+    project.value?.users?.find(
+      (user) => user.id === loggedUser.value.id
+    ) ?? null
+  )
 })
+
 const taskForm = ref({
   title: '',
   description: '',
   projectId: currentProjectId,
   status: 'Do zrobienia',
-  priority: 'Sredni',
+  priority: 'Średni',
   deadline: '',
   assignedUserIds: []
 })
-const projectUsers = computed(() => {
-  if (!project) {
-    return []
-  }
 
-  return users.filter((user) =>
-    project.userIds?.includes(user.id)
-  )
+const projectUsers = computed(() => {
+  return project.value?.users ?? []
 })
+
 const assignableUsers = computed(() => {
   if (isBoss.value) {
-    return projectUsers.value.filter((user) => user.role === 'pracownik')
+    return projectUsers.value.filter(
+      (user) => user.role === 'pracownik'
+    )
   }
 
-  return currentWorker.value ? [currentWorker.value] : []
+  return currentWorker.value
+    ? [currentWorker.value]
+    : []
 })
 
-const projectTasks = computed(() =>
-  localTasks.value.filter((task) => task.projectId === currentProjectId)
-)
-
-
-const resetTaskForm = () => {
-  taskForm.value = {
-    title: '',
-    description: '',
-    projectId: currentProjectId,
-    status: 'Do zrobienia',
-    priority: 'Sredni',
-    deadline: '',
-    assignedUserIds: isBoss.value || !loggedUser.value ? [] : [loggedUser.value.id]
-  }
-}
-
-const openTaskForm = () => {
-  resetTaskForm()
-  showTaskForm.value = true
-}
-
-const closeTaskForm = () => {
-  resetTaskForm()
-  showTaskForm.value = false
-}
-
-const submitTask = () => {
-  const trimmedTitle = taskForm.value.title.trim()
-  const trimmedDescription = taskForm.value.description.trim()
-
-  if (!trimmedTitle || !trimmedDescription || !project || !taskForm.value.deadline) {
-    return
-  }
-
-  const assignedUserIds = isBoss.value
-    ? [...taskForm.value.assignedUserIds]
-    : loggedUser.value
-      ? [loggedUser.value.id]
-      : []
-
-  if (assignedUserIds.length === 0 || !loggedUser.value) {
-    return
-  }
-
-  localTasks.value.unshift({
-    id: Date.now(),
-    projectId: currentProjectId,
-    assignedUserIds,
-    createdByUserId: loggedUser.value.id,
-    title: trimmedTitle,
-    description: trimmedDescription,
-    project: project.title,
-    status: taskForm.value.status,
-    priority: taskForm.value.priority,
-    deadline: taskForm.value.deadline,
-    createdAt: new Date().toISOString().slice(0, 10)
-  })
-
-  closeTaskForm()
-}
+const projectTasks = computed(() => {
+  return localTasks.value
+})
 
 const canViewProject = computed(() => {
-  if (!loggedUser.value) {
+  if (!loggedUser.value || !project.value) {
     return false
   }
 
@@ -370,10 +332,115 @@ const canViewProject = computed(() => {
     return true
   }
 
-  return project?.userIds?.includes(loggedUser.value.id) ?? false
+  return (
+    project.value.userIds?.includes(
+      loggedUser.value.id
+    ) ?? false
+  )
 })
-</script>
 
+function resetTaskForm() {
+  taskForm.value = {
+    title: '',
+    description: '',
+    projectId: currentProjectId,
+    status: 'Do zrobienia',
+    priority: 'Średni',
+    deadline: '',
+    assignedUserIds:
+      isBoss.value || !loggedUser.value
+        ? []
+        : [loggedUser.value.id]
+  }
+
+  submitError.value = ''
+}
+
+function openTaskForm() {
+  resetTaskForm()
+  showTaskForm.value = true
+}
+
+function closeTaskForm() {
+  resetTaskForm()
+  showTaskForm.value = false
+}
+
+async function submitTask() {
+  const trimmedTitle =
+    taskForm.value.title.trim()
+
+  const trimmedDescription =
+    taskForm.value.description.trim()
+
+  submitError.value = ''
+
+  if (!trimmedTitle) {
+    submitError.value = 'Podaj nazwę zadania.'
+    return
+  }
+
+  if (!trimmedDescription) {
+    submitError.value = 'Podaj opis zadania.'
+    return
+  }
+
+  if (!taskForm.value.deadline) {
+    submitError.value =
+      'Wybierz termin wykonania zadania.'
+    return
+  }
+
+  if (!project.value || !loggedUser.value) {
+    submitError.value =
+      'Nie udało się odczytać projektu lub użytkownika.'
+    return
+  }
+
+  const assignedUserIds = isBoss.value
+    ? [...taskForm.value.assignedUserIds]
+    : [loggedUser.value.id]
+
+  if (assignedUserIds.length === 0) {
+    submitError.value =
+      'Przypisz przynajmniej jedną osobę.'
+    return
+  }
+
+  try {
+    isSubmitting.value = true
+
+    const createdTask = await $fetch('/api/tasks', {
+      method: 'POST',
+
+      body: {
+        projectId: currentProjectId,
+        createdByUserId: loggedUser.value.id,
+        title: trimmedTitle,
+        description: trimmedDescription,
+        status: taskForm.value.status,
+        priority: taskForm.value.priority,
+        deadline: taskForm.value.deadline,
+        assignedUserIds
+      }
+    })
+
+    localTasks.value.unshift(createdTask)
+
+    closeTaskForm()
+  } catch (error) {
+    console.error(
+      'Nie udało się utworzyć zadania:',
+      error
+    )
+
+    submitError.value =
+      'Nie udało się utworzyć zadania. Spróbuj ponownie.'
+  } finally {
+    isSubmitting.value = false
+  }
+}
+</script>
 <style scoped>
 .project-detail {
   position: relative;

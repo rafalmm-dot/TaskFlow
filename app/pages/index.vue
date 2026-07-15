@@ -1,43 +1,138 @@
-<script setup>
+<<script setup>
 import { computed } from 'vue'
 
-import { tasks } from '~/data/tasks'
+const { loggedUser } = useAuth()
 
-import { projects } from '~/data/projects'
+const {
+  data: tasksFromApi
+} = await useFetch('/api/tasks', {
+  default: () => []
+})
 
+const {
+  data: projectsFromApi
+} = await useFetch('/api/projects', {
+  default: () => []
+})
 
-const latestTasks = computed(() => tasks.slice(0, 3))
-const latestProjects = computed(() => projects.slice(0, 3))
+const tasks = computed(() => {
+  return tasksFromApi.value ?? []
+})
+
+const projects = computed(() => {
+  return projectsFromApi.value ?? []
+})
+
+const visibleTasks = computed(() => {
+  if (!loggedUser.value) {
+    return []
+  }
+
+  if (loggedUser.value.role === 'szef') {
+    return tasks.value
+  }
+
+  return tasks.value.filter((task) =>
+    task.assignedUserIds?.includes(
+      loggedUser.value.id
+    )
+  )
+})
+
+const visibleProjects = computed(() => {
+  if (!loggedUser.value) {
+    return []
+  }
+
+  if (loggedUser.value.role === 'szef') {
+    return projects.value
+  }
+
+  return projects.value.filter((project) =>
+    project.userIds?.includes(
+      loggedUser.value.id
+    )
+  )
+})
+
 const normalizeStatus = (status) =>
-  (status || '')
+  String(status ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+    .replace(/ł/g, 'l')
 
-const isTodoTask = (task) => normalizeStatus(task.status) === 'do zrobienia'
-const isInProgressTask = (task) => normalizeStatus(task.status) === 'w trakcie'
-const isDoneTask = (task) => normalizeStatus(task.status) === 'zakonczone'
+const isTodoTask = (task) => {
+  return normalizeStatus(task.status) === 'do zrobienia'
+}
+
+const isInProgressTask = (task) => {
+  return normalizeStatus(task.status) === 'w trakcie'
+}
+
+const isDoneTask = (task) => {
+  return normalizeStatus(task.status) === 'zakonczone'
+}
+
+const latestTasks = computed(() => {
+  return [...visibleTasks.value]
+    .sort((firstTask, secondTask) => {
+      return (
+        new Date(firstTask.deadline) -
+        new Date(secondTask.deadline)
+      )
+    })
+    .slice(0, 3)
+})
+
+const latestProjects = computed(() => {
+  return [...visibleProjects.value]
+    .sort((firstProject, secondProject) => {
+      return (
+        new Date(firstProject.deadline) -
+        new Date(secondProject.deadline)
+      )
+    })
+    .slice(0, 3)
+})
 
 const dashboardCards = computed(() => [
   {
-    label: 'Projekty',
-    number: projects.length
+    label:
+      loggedUser.value?.role === 'szef'
+        ? 'Projekty'
+        : 'Moje projekty',
+
+    number: visibleProjects.value.length
   },
   {
-    label: 'Zadania',
-    number: tasks.length
+    label:
+      loggedUser.value?.role === 'szef'
+        ? 'Zadania'
+        : 'Moje zadania',
+
+    number: visibleTasks.value.length
   },
   {
     label: 'Do zrobienia',
-    number: tasks.filter(isTodoTask).length
+
+    number: visibleTasks.value.filter(
+      isTodoTask
+    ).length
   },
   {
     label: 'W trakcie',
-    number: tasks.filter(isInProgressTask).length
+
+    number: visibleTasks.value.filter(
+      isInProgressTask
+    ).length
   },
   {
-    label: 'Zakonczone',
-    number: tasks.filter(isDoneTask).length
+    label: 'Zakończone',
+
+    number: visibleTasks.value.filter(
+      isDoneTask
+    ).length
   }
 ])
 </script>

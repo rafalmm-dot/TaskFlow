@@ -1,59 +1,22 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { tasks } from '~/data/tasks'
 import { users } from '~/data/users'
-
- 
 
 const { loggedUser } = useAuth()
 const route = useRoute()
+
 const currentTaskId = Number(route.params.id)
 
-const foundTask = tasks.find(
-  (taskItem) => taskItem.id === currentTaskId
-)
-
-const task = foundTask ? reactive(foundTask) : null
-
-const canViewTask = computed(() => {
-  if (!loggedUser.value) {
-    return false
-  }
-
-  if (loggedUser.value.role === 'szef') {
-    return true
-  }
-
-  return task?.assignedUserIds?.includes(loggedUser.value.id) ?? false
-})
-const assignedUsers = computed(() => {
-  if (!task) {
-    return []
-  }
-
-  return users.filter((user) =>
-    task.assignedUserIds?.includes(user.id)
-  )
-})
-
-const taskAuthor = computed(() => {
-  if (!task) {
-    return null
-  }
-
-  return users.find(
-    (user) => user.id === task.createdByUserId
-  )
-})
-
-const assignedPeopleCount = computed(() => {
-  return assignedUsers.value.length
-})
-const workerUsers = computed(() => {
-  return users.filter((user) => user.role === 'pracownik')
+const {
+  data: task,
+  pending: taskLoading,
+  error: taskError
+} = await useFetch(`/api/tasks/${currentTaskId}`, {
+  default: () => null
 })
 
 const isEditing = ref(false)
+const isSaving = ref(false)
 const formError = ref('')
 
 const form = reactive({
@@ -65,68 +28,154 @@ const form = reactive({
   assignedUserIds: []
 })
 
+const canViewTask = computed(() => {
+  if (!loggedUser.value || !task.value) {
+    return false
+  }
+
+  if (loggedUser.value.role === 'szef') {
+    return true
+  }
+
+  return (
+    task.value.assignedUserIds?.includes(
+      loggedUser.value.id
+    ) ?? false
+  )
+})
+
+const assignedUsers = computed(() => {
+  return task.value?.assignedUsers ?? []
+})
+
+const taskAuthor = computed(() => {
+  return task.value?.createdByUser ?? null
+})
+
+const assignedPeopleCount = computed(() => {
+  return assignedUsers.value.length
+})
+
+const workerUsers = computed(() => {
+  return users.filter(
+    (user) => user.role === 'pracownik'
+  )
+})
+
 function startEdit() {
-  if (!task) {
+  if (!task.value) {
     return
   }
 
-  form.title = task.title
-  form.description = task.description
-  form.status = task.status
-  form.priority = task.priority
-  form.deadline = task.deadline
-  form.assignedUserIds = [...(task.assignedUserIds ?? [])]
+  form.title = task.value.title
+  form.description = task.value.description
+  form.status = task.value.status
+  form.priority = task.value.priority
+  form.deadline = task.value.deadline
+
+  form.assignedUserIds = [
+    ...(task.value.assignedUserIds ?? [])
+  ]
 
   formError.value = ''
   isEditing.value = true
 }
+
 function cancelEdit() {
+  if (isSaving.value) {
+    return
+  }
+
   isEditing.value = false
   formError.value = ''
 }
 
-function saveTask() {
-  if (!task || !loggedUser.value) {
+async function saveTask() {
+  if (
+    !task.value ||
+    !loggedUser.value ||
+    isSaving.value
+  ) {
     return
   }
 
   formError.value = ''
 
-  if (loggedUser.value.role === 'szef') {
-    if (!form.title.trim()) {
-      formError.value = 'Tytuł zadania nie może być pusty.'
-      return
-    }
-
-    if (!form.description.trim()) {
-      formError.value = 'Opis zadania nie może być pusty.'
-      return
-    }
-
-    if (!form.deadline) {
-      formError.value = 'Wybierz termin wykonania zadania.'
-      return
-    }
-
-    if (form.assignedUserIds.length === 0) {
-      formError.value = 'Przypisz przynajmniej jedną osobę.'
-      return
-    }
-
-    task.title = form.title.trim()
-    task.description = form.description.trim()
-    task.priority = form.priority
-    task.deadline = form.deadline
-    task.assignedUserIds = [...form.assignedUserIds]
+  if (!form.title.trim()) {
+    formError.value =
+      'Tytuł zadania nie może być pusty.'
+    return
   }
 
-  task.status = form.status
+  if (!form.description.trim()) {
+    formError.value =
+      'Opis zadania nie może być pusty.'
+    return
+  }
 
-  formError.value = ''
-  isEditing.value = false
+  if (!form.status) {
+    formError.value =
+      'Wybierz status zadania.'
+    return
+  }
+
+  if (!form.priority) {
+    formError.value =
+      'Wybierz priorytet zadania.'
+    return
+  }
+
+  if (!form.deadline) {
+    formError.value =
+      'Wybierz termin wykonania zadania.'
+    return
+  }
+
+  if (form.assignedUserIds.length === 0) {
+    formError.value =
+      'Przypisz przynajmniej jedną osobę.'
+    return
+  }
+
+  try {
+    isSaving.value = true
+
+    const updatedTask = await $fetch(
+      `/api/tasks/${currentTaskId}`,
+      {
+        method: 'PUT',
+
+        body: {
+          title: form.title.trim(),
+          description: form.description.trim(),
+          status: form.status,
+          priority: form.priority,
+          deadline: form.deadline,
+          assignedUserIds: [
+            ...form.assignedUserIds
+          ]
+        }
+      }
+    )
+
+    Object.assign(task.value, updatedTask)
+
+    formError.value = ''
+    isEditing.value = false
+  } catch (error) {
+    console.error(
+      'Nie udało się zapisać zadania:',
+      error
+    )
+
+    formError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się zapisać zmian w bazie danych.'
+  } finally {
+    isSaving.value = false
+  }
 }
 </script>
-
 <template>
   <section v-if="task" class="task-detail">
     <div v-if="!canViewTask" class="access-toast">

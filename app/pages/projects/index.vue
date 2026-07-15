@@ -49,16 +49,26 @@
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
+
 const { loggedUser } = useAuth()
+
+const {
+  data: projectsFromApi,
+  pending: projectsLoading,
+  error: projectsError
+} = await useFetch('/api/projects', {
+  default: () => []
+})
+
 const accessToast = ref('')
 
-import { projects } from '~/data/projects'
-import { users } from '~/data/users'
+const projects = computed(() => {
+  return projectsFromApi.value ?? []
+})
 
 function getProjectUsers(project) {
-  return users.filter((user) =>
-    project.userIds?.includes(user.id)
-  )
+  return project.users ?? []
 }
 
 function canViewProject(project) {
@@ -70,7 +80,10 @@ function canViewProject(project) {
     return true
   }
 
-  return project.userIds?.includes(loggedUser.value.id) ?? false
+  return (
+    project.userIds?.includes(loggedUser.value.id) ??
+    false
+  )
 }
 
 function openProject(project) {
@@ -79,12 +92,11 @@ function openProject(project) {
     return
   }
 
-  accessToast.value = 'Nie jestes przypisany do tego projektu.'
+  accessToast.value =
+    'Nie jesteś przypisany do tego projektu.'
 
   setTimeout(() => {
-    if (accessToast.value) {
-      accessToast.value = ''
-    }
+    accessToast.value = ''
   }, 3000)
 }
 </script>

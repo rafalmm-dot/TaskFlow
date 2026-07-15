@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model project_members {
+  project_id Int      @db.UnsignedInt
+  user_id    Int      @db.UnsignedInt
+  joined_at  DateTime @default(now()) @db.Timestamp(0)
+  projects   projects @relation(fields: [project_id], references: [id], onDelete: Cascade, map: "project_members_project_fk")
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "project_members_user_fk")
+
+  @@id([project_id, user_id])
+  @@index([user_id], map: "project_members_user_id_index")
+}
+
+model projects {
+  id              Int               @id @default(autoincrement()) @db.UnsignedInt
+  title           String            @db.VarChar(200)
+  description     String?           @db.Text
+  deadline        DateTime          @db.Date
+  status          String            @db.VarChar(30)
+  created_at      DateTime          @default(now()) @db.Timestamp(0)
+  updated_at      DateTime          @default(now()) @db.Timestamp(0)
+  project_members project_members[]
+  tasks           tasks[]
+
+  @@index([deadline], map: "projects_deadline_index")
+  @@index([status], map: "projects_status_index")
+}
+
+model task_assignees {
+  task_id     Int      @db.UnsignedInt
+  user_id     Int      @db.UnsignedInt
+  assigned_at DateTime @default(now()) @db.Timestamp(0)
+  tasks       tasks    @relation(fields: [task_id], references: [id], onDelete: Cascade, map: "task_assignees_task_fk")
+  users       users    @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "task_assignees_user_fk")
+
+  @@id([task_id, user_id])
+  @@index([user_id], map: "task_assignees_user_id_index")
+}
+
+model tasks {
+  id                 Int              @id @default(autoincrement()) @db.UnsignedInt
+  project_id         Int              @db.UnsignedInt
+  created_by_user_id Int              @db.UnsignedInt
+  title              String           @db.VarChar(200)
+  description        String           @db.Text
+  status             String           @db.VarChar(30)
+  priority           String           @db.VarChar(30)
+  deadline           DateTime         @db.Date
+  created_at         DateTime         @default(now()) @db.Timestamp(0)
+  updated_at         DateTime         @default(now()) @db.Timestamp(0)
+  task_assignees     task_assignees[]
+  users              users            @relation(fields: [created_by_user_id], references: [id], map: "tasks_creator_fk")
+  projects           projects         @relation(fields: [project_id], references: [id], onDelete: Cascade, map: "tasks_project_fk")
+
+  @@index([created_by_user_id], map: "tasks_created_by_user_id_index")
+  @@index([deadline], map: "tasks_deadline_index")
+  @@index([priority], map: "tasks_priority_index")
+  @@index([project_id], map: "tasks_project_id_index")
+  @@index([status], map: "tasks_status_index")
+}
+
+model users {
+  id              Int               @id @default(autoincrement()) @db.UnsignedInt
+  name            String            @db.VarChar(100)
+  surname         String            @db.VarChar(100)
+  login           String            @unique(map: "users_login_unique") @db.VarChar(100)
+  password_hash   String            @db.VarChar(255)
+  role            String            @db.VarChar(30)
+  created_at      DateTime          @default(now()) @db.Timestamp(0)
+  updated_at      DateTime          @default(now()) @db.Timestamp(0)
+  project_members project_members[]
+  task_assignees  task_assignees[]
+  tasks           tasks[]
+}

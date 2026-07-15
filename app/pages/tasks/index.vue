@@ -1,10 +1,40 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { projects } from '~/data/projects'
-import { tasks } from '~/data/tasks'
-import { users } from '~/data/users'
 
 const { loggedUser } = useAuth()
+
+const {
+  data: tasksFromApi,
+  pending: tasksLoading,
+  error: tasksError
+} = await useFetch('/api/tasks', {
+  default: () => []
+})
+
+const {
+  data: projectsFromApi,
+  pending: projectsLoading,
+  error: projectsError
+} = await useFetch('/api/projects', {
+  default: () => []
+})
+
+const {
+  data: usersFromApi,
+  pending: usersLoading,
+  error: usersError
+} = await useFetch('/api/users', {
+  default: () => []
+})
+
+const projects = computed(() => {
+  return projectsFromApi.value ?? []
+})
+
+const users = computed(() => {
+  return usersFromApi.value ?? []
+})
+
 const accessToast = ref('')
 const searchQuery = ref('')
 const selectedStatus = ref('Wszystkie')
@@ -12,61 +42,200 @@ const selectedPriority = ref('Wszystkie')
 const selectedSort = ref('deadlineAsc')
 
 const showCreateTaskForm = ref(false)
+const isCreatingTask = ref(false)
+const createTaskError = ref('')
 
-const workerUsers = users.filter(
-  (user) => user.role === 'pracownik'
-)
-const isBoss = computed(() => loggedUser.value?.role === 'szef')
+const createTaskForm = ref({
+  title: '',
+  description: '',
+  projectId: '',
+  status: 'Do zrobienia',
+  priority: 'Średni',
+  deadline: '',
+  assignedUserIds: []
+})
+
+const isBoss = computed(() => {
+  return loggedUser.value?.role === 'szef'
+})
+
+const workerUsers = computed(() => {
+  return users.value.filter(
+    (user) => user.role === 'pracownik'
+  )
+})
+
 const currentWorker = computed(() => {
-  if (!loggedUser.value || loggedUser.value.role !== 'pracownik') {
+  if (
+    !loggedUser.value ||
+    loggedUser.value.role !== 'pracownik'
+  ) {
     return null
   }
 
-  return users.find((user) => user.id === loggedUser.value.id) ?? null
+  return (
+    users.value.find(
+      (user) => user.id === loggedUser.value.id
+    ) ?? null
+  )
 })
+
 const availableProjects = computed(() => {
   if (!loggedUser.value) {
     return []
   }
 
   if (isBoss.value) {
-    return projects
+    return projects.value
   }
 
-  return projects.filter((project) =>
+  return projects.value.filter((project) =>
     project.userIds?.includes(loggedUser.value.id)
   )
 })
 
+function resetCreateTaskForm() {
+  createTaskForm.value = {
+    title: '',
+    description: '',
+    projectId: '',
+    status: 'Do zrobienia',
+    priority: 'Średni',
+    deadline: '',
+    assignedUserIds:
+      isBoss.value || !loggedUser.value
+        ? []
+        : [loggedUser.value.id]
+  }
+
+  createTaskError.value = ''
+}
+
 function openCreateTaskForm() {
+  resetCreateTaskForm()
   showCreateTaskForm.value = true
 }
 
 function closeCreateTaskForm() {
+  if (isCreatingTask.value) {
+    return
+  }
+
+  resetCreateTaskForm()
   showCreateTaskForm.value = false
 }
+async function submitCreateTask() {
+  if (!loggedUser.value || isCreatingTask.value) {
+    return
+  }
 
- const normalizeText = (text) =>
+  const title = createTaskForm.value.title.trim()
+  const description =
+    createTaskForm.value.description.trim()
+
+  createTaskError.value = ''
+
+  if (!title) {
+    createTaskError.value = 'Podaj nazwę zadania.'
+    return
+  }
+
+  if (!description) {
+    createTaskError.value = 'Podaj opis zadania.'
+    return
+  }
+
+  if (!createTaskForm.value.projectId) {
+    createTaskError.value = 'Wybierz projekt.'
+    return
+  }
+
+  if (!createTaskForm.value.deadline) {
+    createTaskError.value =
+      'Wybierz termin wykonania zadania.'
+    return
+  }
+
+  const assignedUserIds = isBoss.value
+    ? [...createTaskForm.value.assignedUserIds]
+    : [loggedUser.value.id]
+
+  if (assignedUserIds.length === 0) {
+    createTaskError.value =
+      'Przypisz przynajmniej jedną osobę.'
+    return
+  }
+
+  try {
+    isCreatingTask.value = true
+
+    const createdTask = await $fetch('/api/tasks', {
+      method: 'POST',
+
+      body: {
+        projectId: Number(
+          createTaskForm.value.projectId
+        ),
+        createdByUserId: loggedUser.value.id,
+        title,
+        description,
+        status: createTaskForm.value.status,
+        priority: createTaskForm.value.priority,
+        deadline: createTaskForm.value.deadline,
+        assignedUserIds
+      }
+    })
+
+    tasksFromApi.value = [
+      createdTask,
+      ...(tasksFromApi.value ?? [])
+    ]
+
+    showCreateTaskForm.value = false
+    resetCreateTaskForm()
+  } catch (error) {
+    console.error(
+      'Nie udało się utworzyć zadania:',
+      error
+    )
+
+    createTaskError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się utworzyć zadania.'
+  } finally {
+    isCreatingTask.value = false
+  }
+}
+
+const normalizeText = (text) =>
   String(text ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/ł/g, 'l')
     .toLowerCase()
+    .replace(/ł/g, 'l')
 
 const visibleTasks = computed(() => {
+  const allTasks = tasksFromApi.value ?? []
+
   if (!loggedUser.value) {
     return []
   }
 
   if (loggedUser.value.role === 'szef') {
-    return tasks
+    return allTasks
   }
 
-  return tasks.filter((task) => task.assignedUserIds?.includes(loggedUser.value.id))
+  return allTasks.filter((task) =>
+    task.assignedUserIds?.includes(
+      loggedUser.value.id
+    )
+  )
 })
 
 const filteredTasks = computed(() => {
-  const query = normalizeText(searchQuery.value.trim())
+  const query = normalizeText(
+    searchQuery.value.trim()
+  )
 
   return visibleTasks.value.filter((task) => {
     const matchesSearch =
@@ -76,20 +245,81 @@ const filteredTasks = computed(() => {
       normalizeText(task.project).includes(query)
 
     const matchesStatus =
-  selectedStatus.value === 'Wszystkie' ||
-  normalizeText(task.status) === normalizeText(selectedStatus.value)
+      selectedStatus.value === 'Wszystkie' ||
+      normalizeText(task.status) ===
+        normalizeText(selectedStatus.value)
 
-const matchesPriority =
-  selectedPriority.value === 'Wszystkie' ||
-  normalizeText(task.priority) === normalizeText(selectedPriority.value)
+    const matchesPriority =
+      selectedPriority.value === 'Wszystkie' ||
+      normalizeText(task.priority) ===
+        normalizeText(selectedPriority.value)
 
-    return matchesSearch && matchesStatus && matchesPriority
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesPriority
+    )
   })
 })
+
+const priorityOrder = {
+  Wysoki: 3,
+  Średni: 2,
+  Niski: 1
+}
+
+const sortedTasks = computed(() => {
+  const tasksToSort = [...filteredTasks.value]
+
+  return tasksToSort.sort(
+    (firstTask, secondTask) => {
+      switch (selectedSort.value) {
+        case 'deadlineDesc':
+          return (
+            new Date(secondTask.deadline) -
+            new Date(firstTask.deadline)
+          )
+
+        case 'priorityDesc':
+          return (
+            (priorityOrder[secondTask.priority] ?? 0) -
+            (priorityOrder[firstTask.priority] ?? 0)
+          )
+
+        case 'priorityAsc':
+          return (
+            (priorityOrder[firstTask.priority] ?? 0) -
+            (priorityOrder[secondTask.priority] ?? 0)
+          )
+
+        case 'titleAsc':
+          return firstTask.title.localeCompare(
+            secondTask.title,
+            'pl'
+          )
+
+        case 'titleDesc':
+          return secondTask.title.localeCompare(
+            firstTask.title,
+            'pl'
+          )
+
+        case 'deadlineAsc':
+        default:
+          return (
+            new Date(firstTask.deadline) -
+            new Date(secondTask.deadline)
+          )
+      }
+    }
+  )
+})
+
 function clearFilters() {
   searchQuery.value = ''
   selectedStatus.value = 'Wszystkie'
   selectedPriority.value = 'Wszystkie'
+  selectedSort.value = 'deadlineAsc'
 }
 
 function canViewTask(task) {
@@ -101,7 +331,11 @@ function canViewTask(task) {
     return true
   }
 
-  return task.assignedUserIds?.includes(loggedUser.value.id) ?? false
+  return (
+    task.assignedUserIds?.includes(
+      loggedUser.value.id
+    ) ?? false
+  )
 }
 
 function openTask(task) {
@@ -110,12 +344,11 @@ function openTask(task) {
     return
   }
 
-  accessToast.value = 'Nie jestes przypisany do tego zadania.'
+  accessToast.value =
+    'Nie jesteś przypisany do tego zadania.'
 
   setTimeout(() => {
-    if (accessToast.value) {
-      accessToast.value = ''
-    }
+    accessToast.value = ''
   }, 3000)
 }
 </script>
@@ -299,7 +532,7 @@ function openTask(task) {
 >
   <form
     class="create-task-modal__content"
-    @submit.prevent
+    @submit.prevent="submitCreateTask"
   >
     <div class="create-task-modal__header">
       <div>
@@ -318,6 +551,7 @@ function openTask(task) {
         type="button"
         class="create-task-modal__close"
         aria-label="Zamknij formularz"
+        :disabled="isCreatingTask"
         @click="closeCreateTaskForm"
       >
         ×
@@ -325,26 +559,32 @@ function openTask(task) {
     </div>
 
     <div class="create-task-form">
-      <div class="create-task-form__field create-task-form__field--full">
+      <div
+        class="create-task-form__field create-task-form__field--full"
+      >
         <label for="new-task-title">
           Nazwa zadania
         </label>
 
         <input
           id="new-task-title"
+          v-model="createTaskForm.title"
           name="title"
           type="text"
           placeholder="Np. Przygotowanie projektu strony głównej"
         >
       </div>
 
-      <div class="create-task-form__field create-task-form__field--full">
+      <div
+        class="create-task-form__field create-task-form__field--full"
+      >
         <label for="new-task-description">
           Dokładny opis zadania
         </label>
 
         <textarea
           id="new-task-description"
+          v-model="createTaskForm.description"
           name="description"
           rows="6"
           placeholder="Opisz zakres zadania, wymagania i oczekiwany rezultat..."
@@ -362,9 +602,10 @@ function openTask(task) {
 
         <select
           id="new-task-project"
+          v-model="createTaskForm.projectId"
           name="projectId"
         >
-          <option value="" selected disabled>
+          <option value="" disabled>
             Wybierz projekt
           </option>
 
@@ -385,6 +626,7 @@ function openTask(task) {
 
         <select
           id="new-task-status"
+          v-model="createTaskForm.status"
           name="status"
         >
           <option value="Do zrobienia">
@@ -408,11 +650,20 @@ function openTask(task) {
 
         <select
           id="new-task-priority"
+          v-model="createTaskForm.priority"
           name="priority"
         >
-          <option value="Niski">Niski</option>
-          <option value="Średni" selected>Średni</option>
-          <option value="Wysoki">Wysoki</option>
+          <option value="Niski">
+            Niski
+          </option>
+
+          <option value="Średni">
+            Średni
+          </option>
+
+          <option value="Wysoki">
+            Wysoki
+          </option>
         </select>
       </div>
 
@@ -423,13 +674,16 @@ function openTask(task) {
 
         <input
           id="new-task-deadline"
+          v-model="createTaskForm.deadline"
           name="deadline"
           type="date"
         >
       </div>
 
       <fieldset class="create-task-form__people">
-        <legend>Osoby przypisane do zadania</legend>
+        <legend>
+          Osoby przypisane do zadania
+        </legend>
 
         <p
           v-if="isBoss"
@@ -442,25 +696,32 @@ function openTask(task) {
           v-else
           class="create-task-form__people-description"
         >
-          Jako pracownik możesz przypisać to zadanie tylko do siebie.
+          Jako pracownik możesz przypisać zadanie tylko do siebie.
         </p>
 
         <div class="create-task-form__people-list">
           <label
-            v-for="user in (isBoss ? workerUsers : currentWorker ? [currentWorker] : [])"
+            v-for="user in (
+              isBoss
+                ? workerUsers
+                : currentWorker
+                  ? [currentWorker]
+                  : []
+            )"
             :key="user.id"
             class="create-task-form__person"
           >
             <input
+              v-model="createTaskForm.assignedUserIds"
               name="assignedUserIds"
               type="checkbox"
               :value="user.id"
-              :checked="!isBoss"
               :disabled="!isBoss"
             >
 
             <span class="create-task-form__avatar">
-              {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
+              {{ user.name?.charAt(0) }}
+              {{ user.surname?.charAt(0) }}
             </span>
 
             <span class="create-task-form__person-details">
@@ -468,27 +729,42 @@ function openTask(task) {
                 {{ user.name }} {{ user.surname }}
               </strong>
 
-              <small>{{ user.role }}</small>
+              <small>
+                {{ user.role }}
+              </small>
             </span>
           </label>
         </div>
       </fieldset>
+
+      <p
+        v-if="createTaskError"
+        class="create-task-form__error"
+      >
+        {{ createTaskError }}
+      </p>
     </div>
 
     <div class="create-task-modal__actions">
       <button
         type="button"
         class="create-task-modal__cancel"
+        :disabled="isCreatingTask"
         @click="closeCreateTaskForm"
       >
         Anuluj
       </button>
 
       <button
-        type="button"
+        type="submit"
         class="create-task-modal__submit"
+        :disabled="isCreatingTask"
       >
-        Utwórz zadanie
+        {{
+          isCreatingTask
+            ? 'Zapisywanie...'
+            : 'Utwórz zadanie'
+        }}
       </button>
     </div>
   </form>
