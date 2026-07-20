@@ -39,11 +39,113 @@
     </section>
 
     <div class="floating-actions">
+ <button
+  v-if="loggedUser?.role === 'szef'"
+  type="button"
+  class="add-project-button"
+  @click="openCreateProjectForm"
+>
+  Dodaj projekt
+</button>
+<div
+  v-if="showCreateProjectForm"
+  class="project-modal"
+  @click.self="closeCreateProjectForm"
+>
+  <form
+    class="project-modal__content"
+    @submit.prevent="submitCreateProject"
+  >
+    <h2>Dodaj projekt</h2>
+
+    <label>
+      Nazwa projektu
+      <input
+        v-model="createProjectForm.title"
+        type="text"
+      >
+    </label>
+
+    <label>
+      Opis
+      <textarea
+        v-model="createProjectForm.description"
+      />
+    </label>
+
+    <label>
+      Status
+      <select v-model="createProjectForm.status">
+        <option value="Planowanie">
+          Planowanie
+        </option>
+        <option value="W trakcie">
+          W trakcie
+        </option>
+        <option value="Gotowe">
+          Gotowe
+        </option>
+      </select>
+    </label>
+
+    <label>
+      Termin
+      <input
+        v-model="createProjectForm.deadline"
+        type="date"
+      >
+    </label>
+
+    <fieldset>
+      <legend>Pracownicy projektu</legend>
+
+      <p v-if="usersLoading">
+        Ładowanie pracowników...
+      </p>
+
+      <label
+        v-for="user in workerUsers"
+        :key="user.id"
+      >
+        <input
+          v-model="createProjectForm.userIds"
+          type="checkbox"
+          :value="user.id"
+        >
+
+        {{ user.name }} {{ user.surname }}
+      </label>
+    </fieldset>
+
+    <p
+      v-if="createProjectError"
+      class="form-error"
+    >
+      {{ createProjectError }}
+    </p>
+
+    <div class="project-modal__actions">
       <button
-        v-if="loggedUser?.role === 'szef'"
-       class="floating-actions__button floating-actions__button--primary">
-        Dodaj projekt
+        type="button"
+        :disabled="isCreatingProject"
+        @click="closeCreateProjectForm"
+      >
+        Anuluj
       </button>
+
+      <button
+        type="submit"
+        :disabled="isCreatingProject"
+      >
+        {{
+          isCreatingProject
+            ? 'Zapisywanie...'
+            : 'Dodaj projekt'
+        }}
+      </button>
+    </div>
+  </form>
+</div>
     </div>
   </section>
 </template>
@@ -61,10 +163,35 @@ const {
   default: () => []
 })
 
+const {
+  data: usersFromApi,
+  pending: usersLoading
+} = await useFetch('/api/users', {
+  default: () => []
+})
+
 const accessToast = ref('')
+
+const showCreateProjectForm = ref(false)
+const isCreatingProject = ref(false)
+const createProjectError = ref('')
+
+const createProjectForm = ref({
+  title: '',
+  description: '',
+  status: 'Planowanie',
+  deadline: '',
+  userIds: []
+})
 
 const projects = computed(() => {
   return projectsFromApi.value ?? []
+})
+
+const workerUsers = computed(() => {
+  return (usersFromApi.value ?? []).filter(
+    (user) => user.role === 'pracownik'
+  )
 })
 
 function getProjectUsers(project) {
@@ -98,6 +225,106 @@ function openProject(project) {
   setTimeout(() => {
     accessToast.value = ''
   }, 3000)
+}
+
+function resetCreateProjectForm() {
+  createProjectForm.value = {
+    title: '',
+    description: '',
+    status: 'Planowanie',
+    deadline: '',
+    userIds: []
+  }
+
+  createProjectError.value = ''
+}
+
+function openCreateProjectForm() {
+  resetCreateProjectForm()
+  showCreateProjectForm.value = true
+}
+
+function closeCreateProjectForm() {
+  if (isCreatingProject.value) {
+    return
+  }
+
+  showCreateProjectForm.value = false
+  createProjectError.value = ''
+}
+
+async function submitCreateProject() {
+  if (isCreatingProject.value) {
+    return
+  }
+
+  createProjectError.value = ''
+
+  const payload = {
+    title: createProjectForm.value.title.trim(),
+    description:
+      createProjectForm.value.description.trim(),
+    status: createProjectForm.value.status,
+    deadline: createProjectForm.value.deadline,
+    userIds: [
+      ...createProjectForm.value.userIds
+    ]
+  }
+
+  if (!payload.title) {
+    createProjectError.value =
+      'Podaj nazwę projektu.'
+    return
+  }
+
+  if (!payload.status) {
+    createProjectError.value =
+      'Wybierz status projektu.'
+    return
+  }
+
+  if (!payload.deadline) {
+    createProjectError.value =
+      'Wybierz termin projektu.'
+    return
+  }
+
+  if (payload.userIds.length === 0) {
+    createProjectError.value =
+      'Przypisz przynajmniej jednego pracownika.'
+    return
+  }
+
+  try {
+    isCreatingProject.value = true
+
+    const createdProject = await $fetch(
+      '/api/projects',
+      {
+        method: 'POST',
+        body: payload
+      }
+    )
+
+    projectsFromApi.value = [
+      createdProject,
+      ...(projectsFromApi.value ?? [])
+    ]
+
+    showCreateProjectForm.value = false
+    resetCreateProjectForm()
+  } catch (error) {
+    console.error(
+      'Nie udało się utworzyć projektu:',
+      error
+    )
+
+    createProjectError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się zapisać projektu w bazie danych.'
+  } finally {
+    isCreatingProject.value = false
+  }
 }
 </script>
 
@@ -291,5 +518,163 @@ function openProject(project) {
 .floating-actions__button--primary {
   color: white;
   background: #2563eb;
+}
+.add-project-button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #111827;
+  color: white;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.add-project-button:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.project-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.project-modal__content {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 28px;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+}
+
+.project-modal__content h2 {
+  margin: 0 0 24px;
+  font-size: 24px;
+  color: #111827;
+}
+
+.project-modal__content label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.project-modal__content input[type='text'],
+.project-modal__content input[type='date'],
+.project-modal__content textarea,
+.project-modal__content select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font: inherit;
+  color: #111827;
+  background: white;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.project-modal__content textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.project-modal__content input:focus,
+.project-modal__content textarea:focus,
+.project-modal__content select:focus {
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
+}
+
+.project-modal__content fieldset {
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.project-modal__content legend {
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.project-modal__content fieldset label {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.project-modal__content fieldset label:last-child {
+  margin-bottom: 0;
+}
+
+.project-modal__content input[type='checkbox'] {
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+}
+
+.form-error {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.project-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.project-modal__actions button {
+  padding: 11px 18px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.project-modal__actions button[type='button'] {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.project-modal__actions button[type='submit'] {
+  background: #111827;
+  color: white;
+}
+
+.project-modal__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 </style>

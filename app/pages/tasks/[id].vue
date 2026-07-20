@@ -1,6 +1,5 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { users } from '~/data/users'
 
 const { loggedUser } = useAuth()
 const route = useRoute()
@@ -15,8 +14,27 @@ const {
   default: () => null
 })
 
+const projectMembers = ref([])
+
+if (task.value?.projectId) {
+  try {
+    const project = await $fetch(
+      `/api/projects/${task.value.projectId}`
+    )
+
+    projectMembers.value = project.users ?? []
+  } catch (error) {
+    console.error(
+      'Nie udało się pobrać pracowników projektu:',
+      error
+    )
+  }
+}
+
 const isEditing = ref(false)
 const isSaving = ref(false)
+const isDeleting = ref(false)
+const deleteError = ref('')
 const formError = ref('')
 
 const form = reactive({
@@ -57,7 +75,7 @@ const assignedPeopleCount = computed(() => {
 })
 
 const workerUsers = computed(() => {
-  return users.filter(
+  return projectMembers.value.filter(
     (user) => user.role === 'pracownik'
   )
 })
@@ -144,7 +162,6 @@ async function saveTask() {
       `/api/tasks/${currentTaskId}`,
       {
         method: 'PUT',
-
         body: {
           title: form.title.trim(),
           description: form.description.trim(),
@@ -175,6 +192,38 @@ async function saveTask() {
     isSaving.value = false
   }
 }
+async function deleteTask() {
+  if (!task.value || isDeleting.value) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Czy na pewno chcesz usunąć zadanie „${task.value.title}”?`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    isDeleting.value = true
+    deleteError.value = ''
+
+    await $fetch(`/api/tasks/${currentTaskId}`, {
+      method: 'DELETE'
+    })
+
+    await navigateTo('/tasks')
+  } catch (error) {
+    console.error('Nie udało się usunąć zadania:', error)
+
+    deleteError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się usunąć zadania.'
+  } finally {
+    isDeleting.value = false
+  }
+}
 </script>
 <template>
   <section v-if="task" class="task-detail">
@@ -198,12 +247,17 @@ async function saveTask() {
 </button>
 
     <button
-      v-if="loggedUser?.role === 'szef'"
-      type="button"
-      class="task-actions__delete"
-    >
-      Usuń
-    </button>
+  v-if="loggedUser?.role === 'szef'"
+  type="button"
+  class="delete-button"
+  :disabled="isDeleting"
+  @click="deleteTask"
+>
+  {{ isDeleting ? 'Usuwanie...' : 'Usuń zadanie' }}
+</button>
+<p v-if="deleteError" class="form-error">
+  {{ deleteError }}
+</p>
   </div>
 </div>
       <section class="task-page">

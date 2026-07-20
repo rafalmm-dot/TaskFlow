@@ -1,6 +1,5 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { users } from '~/data/users'
 
 const { login } = useAuth()
 
@@ -9,6 +8,7 @@ const currentMode = ref('login')
 const enteredLogin = ref('')
 const enteredPassword = ref('')
 const loginError = ref('')
+const isLoggingIn = ref(false)
 
 const registerForm = ref({
   name: '',
@@ -16,10 +16,13 @@ const registerForm = ref({
   login: '',
   password: ''
 })
+
 const registerMessage = ref('')
 const registerError = ref('')
 
-const isLoginMode = computed(() => currentMode.value === 'login')
+const isLoginMode = computed(() => {
+  return currentMode.value === 'login'
+})
 
 function switchMode(mode) {
   currentMode.value = mode
@@ -28,22 +31,42 @@ function switchMode(mode) {
   registerMessage.value = ''
 }
 
-function handleLogin() {
-  const foundUser = users.find(
-    (user) =>
-      user.login === enteredLogin.value.trim() &&
-      user.password === enteredPassword.value
-  )
+async function handleLogin() {
+  loginError.value = ''
 
-  if (!foundUser) {
-    loginError.value = 'Nieprawidlowy login lub haslo'
+  const loginValue = enteredLogin.value.trim()
+  const passwordValue = enteredPassword.value
+
+  if (!loginValue || !passwordValue) {
+    loginError.value = 'Podaj login i hasło.'
     return
   }
 
-  login(foundUser)
-  enteredLogin.value = ''
-  enteredPassword.value = ''
-  loginError.value = ''
+  try {
+    isLoggingIn.value = true
+
+    const foundUser = await $fetch('/api/auth/login', {
+      method: 'POST',
+      body: {
+        login: loginValue,
+        password: passwordValue
+      }
+    })
+
+    login(foundUser)
+
+    enteredLogin.value = ''
+    enteredPassword.value = ''
+    loginError.value = ''
+  } catch (error) {
+    console.error('Nie udało się zalogować:', error)
+
+    loginError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się zalogować.'
+  } finally {
+    isLoggingIn.value = false
+  }
 }
 
 function handleRegister() {
@@ -58,20 +81,19 @@ function handleRegister() {
     role: 'pracownik'
   }
 
-  if (!payload.name || !payload.surname || !payload.login || !payload.password) {
-    registerError.value = 'Uzupelnij wszystkie pola formularza'
-    return
-  }
-
-  const loginExists = users.some((user) => user.login === payload.login)
-
-  if (loginExists) {
-    registerError.value = 'Taki login jest juz zajety'
+  if (
+    !payload.name ||
+    !payload.surname ||
+    !payload.login ||
+    !payload.password
+  ) {
+    registerError.value =
+      'Uzupełnij wszystkie pola formularza.'
     return
   }
 
   registerMessage.value =
-    'Formularz dziala poprawnie. Rejestracja jest przygotowana, ale jeszcze nie zapisuje danych.'
+    'Formularz działa poprawnie, ale rejestracja nie zapisuje jeszcze użytkownika do bazy.'
 
   registerForm.value = {
     name: '',
