@@ -10,6 +10,15 @@ const userInitial = computed(() => {
   return loggedUser.value.name.charAt(0).toUpperCase()
 })
 
+const isBoss = computed(() => {
+  return loggedUser.value?.role === 'szef'
+})
+
+function openAdminPanel() {
+  isUserMenuOpen.value = false
+  navigateTo('/admin')
+}
+
 function handleLogout() {
   isUserMenuOpen.value = false
   logout()
@@ -38,6 +47,15 @@ function handleLogout() {
           v-if="isUserMenuOpen"
           class="sidebar-user__menu"
         >
+          <button
+            v-if="isBoss"
+            type="button"
+            class="sidebar-user__menu-item sidebar-user__menu-item--admin"
+            @click="openAdminPanel"
+          >
+            Panel administratora
+          </button>
+
           <button
             class="sidebar-user__menu-item"
             @click="handleLogout"
@@ -79,7 +97,7 @@ function handleLogout() {
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .sidebar__logo {
@@ -119,6 +137,8 @@ function handleLogout() {
 
 .sidebar-user {
   margin-top: auto;
+  position: relative;
+  z-index: 20;
 }
 
 .sidebar-user__card {
@@ -187,32 +207,94 @@ function handleLogout() {
 
 .sidebar-user__menu {
   position: absolute;
+  left: 0;
   right: 0;
-  bottom: calc(100% + 8px);
-  min-width: 112px;
-  padding: 5px;
-  border-radius: 10px;
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  bottom: calc(100% + 10px);
+  width: 100%;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 42%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(17, 24, 39, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow:
+    0 24px 44px rgba(2, 6, 23, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  transform-origin: bottom center;
 }
 
 .sidebar-user__menu-item {
   width: 100%;
-  padding: 7px 9px;
+  padding: 12px 14px;
   border: 0;
-  border-radius: 10px;
-  color: #dc2626;
-  background: transparent;
+  border-radius: 14px;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.04);
   font-weight: 700;
   font-size: 12px;
+  line-height: 1.2;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
   text-align: left;
 }
 
 .sidebar-user__menu-item:hover {
-  background: #fee2e2;
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.sidebar-user__menu-item--admin {
+  position: relative;
+  overflow: hidden;
+  padding-left: 18px;
+  color: #dbeafe;
+  background:
+    linear-gradient(135deg, rgba(30, 64, 175, 0.34) 0%, rgba(37, 99, 235, 0.18) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 24px rgba(37, 99, 235, 0.16);
+}
+
+.sidebar-user__menu-item--admin:hover {
+  transform: translateY(-1px);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.38) 0%, rgba(59, 130, 246, 0.24) 100%);
+  color: #eff6ff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 14px 30px rgba(37, 99, 235, 0.18);
+}
+
+.sidebar-user__menu-item--admin::after {
+  content: '';
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2563eb 0%, #60a5fa 100%);
+}
+
+.sidebar-user__menu-item:last-child {
+  color: #fca5a5;
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.28) 0%, rgba(69, 10, 10, 0.24) 100%);
+}
+
+.sidebar-user__menu-item:last-child:hover {
+  background: linear-gradient(180deg, rgba(153, 27, 27, 0.34) 0%, rgba(127, 29, 29, 0.28) 100%);
+  color: #fecaca;
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.14);
 }
 
 @media (max-width: 768px) {

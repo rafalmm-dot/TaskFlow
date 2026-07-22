@@ -1,35 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 const { login } = useAuth()
-
-const currentMode = ref('login')
 
 const enteredLogin = ref('')
 const enteredPassword = ref('')
 const loginError = ref('')
 const isLoggingIn = ref(false)
-
-const registerForm = ref({
-  name: '',
-  surname: '',
-  login: '',
-  password: ''
-})
-
-const registerMessage = ref('')
-const registerError = ref('')
-
-const isLoginMode = computed(() => {
-  return currentMode.value === 'login'
-})
-
-function switchMode(mode) {
-  currentMode.value = mode
-  loginError.value = ''
-  registerError.value = ''
-  registerMessage.value = ''
-}
 
 async function handleLogin() {
   loginError.value = ''
@@ -38,7 +15,7 @@ async function handleLogin() {
   const passwordValue = enteredPassword.value
 
   if (!loginValue || !passwordValue) {
-    loginError.value = 'Podaj login i hasło.'
+    loginError.value = 'Podaj login i haslo.'
     return
   }
 
@@ -59,47 +36,13 @@ async function handleLogin() {
     enteredPassword.value = ''
     loginError.value = ''
   } catch (error) {
-    console.error('Nie udało się zalogować:', error)
+    console.error('Nie udalo sie zalogowac:', error)
 
     loginError.value =
       error?.data?.statusMessage ??
-      'Nie udało się zalogować.'
+      'Nie udalo sie zalogowac.'
   } finally {
     isLoggingIn.value = false
-  }
-}
-
-function handleRegister() {
-  registerError.value = ''
-  registerMessage.value = ''
-
-  const payload = {
-    name: registerForm.value.name.trim(),
-    surname: registerForm.value.surname.trim(),
-    login: registerForm.value.login.trim(),
-    password: registerForm.value.password,
-    role: 'pracownik'
-  }
-
-  if (
-    !payload.name ||
-    !payload.surname ||
-    !payload.login ||
-    !payload.password
-  ) {
-    registerError.value =
-      'Uzupełnij wszystkie pola formularza.'
-    return
-  }
-
-  registerMessage.value =
-    'Formularz działa poprawnie, ale rejestracja nie zapisuje jeszcze użytkownika do bazy.'
-
-  registerForm.value = {
-    name: '',
-    surname: '',
-    login: '',
-    password: ''
   }
 }
 </script>
@@ -111,17 +54,13 @@ function handleRegister() {
     <section class="login-card">
       <div class="login-card__header">
         <div class="login-card__logo">TaskFlow</div>
-        <h1>{{ isLoginMode ? 'Zaloguj sie' : 'Zarejestruj sie' }}</h1>
+        <h1>Zaloguj sie</h1>
         <p>
-          {{
-            isLoginMode
-              ? 'Zaloguj sie, aby uzyskac dostep do projektow, zadan i panelu aplikacji.'
-              : 'Utworz konto uzytkownika. Formularz jest gotowy pod przyszle podlaczenie backendu.'
-          }}
+          Zaloguj sie, aby uzyskac dostep do projektow, zadan i panelu aplikacji.
         </p>
       </div>
 
-      <form v-if="isLoginMode" class="login-form" @submit.prevent="handleLogin">
+      <form class="login-form" @submit.prevent="handleLogin">
         <label class="login-form__field">
           <span>Login</span>
           <input
@@ -147,74 +86,12 @@ function handleRegister() {
         </p>
 
         <div class="login-form__actions">
-          <button type="submit" class="login-form__button login-form__button--primary">
-            Zaloguj sie
-          </button>
           <button
-            type="button"
-            class="login-form__button login-form__button--secondary"
-            @click="switchMode('register')"
+            type="submit"
+            class="login-form__button login-form__button--primary"
+            :disabled="isLoggingIn"
           >
-            Zarejestruj sie
-          </button>
-        </div>
-      </form>
-
-      <form v-else class="login-form" @submit.prevent="handleRegister">
-        <label class="login-form__field">
-          <span>Imie</span>
-          <input
-            v-model="registerForm.name"
-            type="text"
-            placeholder="Wpisz imie"
-          >
-        </label>
-
-        <label class="login-form__field">
-          <span>Nazwisko</span>
-          <input
-            v-model="registerForm.surname"
-            type="text"
-            placeholder="Wpisz nazwisko"
-          >
-        </label>
-
-        <label class="login-form__field">
-          <span>Login</span>
-          <input
-            v-model="registerForm.login"
-            type="text"
-            placeholder="Utworz login"
-          >
-        </label>
-
-        <label class="login-form__field">
-          <span>Haslo</span>
-          <input
-            v-model="registerForm.password"
-            type="password"
-            placeholder="Utworz haslo"
-          >
-        </label>
-
-        <p v-if="registerError" class="login-form__error">
-          {{ registerError }}
-        </p>
-
-        <p v-if="registerMessage" class="login-form__success">
-          {{ registerMessage }}
-        </p>
-
-        <div class="login-form__actions">
-          <button type="submit" class="login-form__button login-form__button--primary">
-            Utworz konto
-          </button>
-          <button
-            type="button"
-            class="login-form__button login-form__button--secondary"
-            @click="switchMode('login')"
-          >
-            Wroc do logowania
+            {{ isLoggingIn ? 'Logowanie...' : 'Zaloguj sie' }}
           </button>
         </div>
       </form>
@@ -316,23 +193,14 @@ function handleRegister() {
   color: #64748b;
 }
 
-.login-form__error,
-.login-form__success {
+.login-form__error {
   margin: 0;
   padding: 12px 14px;
   border-radius: 14px;
   font-size: 14px;
   font-weight: 600;
-}
-
-.login-form__error {
   color: #b91c1c;
   background: #fee2e2;
-}
-
-.login-form__success {
-  color: #166534;
-  background: #dcfce7;
 }
 
 .login-form__actions {
@@ -358,14 +226,14 @@ function handleRegister() {
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
-.login-form__button--primary:hover {
+.login-form__button--primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 18px 30px rgba(37, 99, 235, 0.26);
   filter: brightness(1.03);
 }
 
-.login-form__button--secondary {
-  color: #e2e8f0;
-  background: rgba(148, 163, 184, 0.14);
+.login-form__button:disabled {
+  cursor: wait;
+  opacity: 0.8;
 }
 </style>
