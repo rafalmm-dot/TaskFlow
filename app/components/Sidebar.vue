@@ -215,14 +215,11 @@ function handleLogout() {
   display: grid;
   gap: 6px;
   border-radius: 16px;
-  background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(17, 24, 39, 0.98) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(226, 232, 240, 0.95);
   box-shadow:
-    0 24px 44px rgba(2, 6, 23, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(16px);
+    0 18px 34px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
   transform-origin: bottom center;
 }
 
@@ -231,8 +228,8 @@ function handleLogout() {
   padding: 12px 14px;
   border: 0;
   border-radius: 14px;
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.04);
+  color: #334155;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   font-weight: 700;
   font-size: 12px;
   line-height: 1.2;
@@ -245,36 +242,40 @@ function handleLogout() {
     transform 0.2s ease,
     background 0.2s ease,
     color 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
   text-align: left;
+  border: 1px solid rgba(226, 232, 240, 0.95);
 }
 
 .sidebar-user__menu-item:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  color: #0f172a;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
 }
 
 .sidebar-user__menu-item--admin {
   position: relative;
   overflow: hidden;
   padding-left: 18px;
-  color: #dbeafe;
+  color: #1d4ed8;
   background:
-    linear-gradient(135deg, rgba(30, 64, 175, 0.34) 0%, rgba(37, 99, 235, 0.18) 100%);
+    linear-gradient(135deg, #eff6ff 0%, #e2e8f0 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 10px 24px rgba(37, 99, 235, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 8px 18px rgba(37, 99, 235, 0.08);
+  border-color: rgba(191, 219, 254, 0.95);
 }
 
 .sidebar-user__menu-item--admin:hover {
   transform: translateY(-1px);
   background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.38) 0%, rgba(59, 130, 246, 0.24) 100%);
-  color: #eff6ff;
+    linear-gradient(135deg, #dbeafe 0%, #e2e8f0 100%);
+  color: #1d4ed8;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 14px 30px rgba(37, 99, 235, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 10px 22px rgba(37, 99, 235, 0.1);
 }
 
 .sidebar-user__menu-item--admin::after {
@@ -287,14 +288,15 @@ function handleLogout() {
 }
 
 .sidebar-user__menu-item:last-child {
-  color: #fca5a5;
-  background: linear-gradient(180deg, rgba(127, 29, 29, 0.28) 0%, rgba(69, 10, 10, 0.24) 100%);
+  color: #dc2626;
+  background: linear-gradient(180deg, #fff7f7 0%, #fff1f2 100%);
+  border-color: rgba(254, 202, 202, 0.9);
 }
 
 .sidebar-user__menu-item:last-child:hover {
-  background: linear-gradient(180deg, rgba(153, 27, 27, 0.34) 0%, rgba(127, 29, 29, 0.28) 100%);
-  color: #fecaca;
-  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.14);
+  background: linear-gradient(180deg, #fff1f2 0%, #ffe4e6 100%);
+  color: #dc2626;
+  box-shadow: 0 8px 18px rgba(239, 68, 68, 0.08);
 }
 
 @media (max-width: 768px) {
