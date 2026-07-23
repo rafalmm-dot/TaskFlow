@@ -11,6 +11,14 @@ type CreateTaskBody = {
   assignedUserIds?: number[]
 }
 
+function normalizePriority(priority: string) {
+  if (priority === 'Sredni' || priority === '?redni') {
+    return 'Średni'
+  }
+
+  return priority
+}
+
 export default defineEventHandler(async (event) => {
   const body = await readBody<CreateTaskBody>(event)
 
@@ -20,7 +28,9 @@ export default defineEventHandler(async (event) => {
   const title = body.title?.trim() ?? ''
   const description = body.description?.trim() ?? ''
   const status = body.status?.trim() ?? ''
-  const priority = body.priority?.trim() ?? ''
+  const priority = normalizePriority(
+    body.priority?.trim() ?? ''
+  )
   const deadline = body.deadline?.trim() ?? ''
 
   const assignedUserIds = [

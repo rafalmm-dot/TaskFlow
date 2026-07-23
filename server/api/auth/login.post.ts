@@ -24,7 +24,8 @@ export default defineEventHandler(async (event) => {
       surname: true,
       login: true,
       password_hash: true,
-      role: true
+      role: true,
+      is_active: true
     }
   })
 
@@ -34,6 +35,12 @@ export default defineEventHandler(async (event) => {
       statusMessage: 'Nieprawidłowy login lub hasło.'
     })
   }
+  if (!user.is_active) {
+  throw createError({
+    statusCode: 403,
+    statusMessage: 'To konto zostało dezaktywowane.'
+  })
+}
 
   const enteredPasswordHash = createHash('sha256')
     .update(password)

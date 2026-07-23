@@ -247,7 +247,7 @@
             <span>Priorytet</span>
             <select v-model="taskForm.priority">
               <option>Niski</option>
-              <option>Sredni</option>
+              <option>Średni</option>
               <option>Wysoki</option>
             </select>
           </label>

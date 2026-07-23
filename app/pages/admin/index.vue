@@ -14,6 +14,7 @@ const createUserForm = ref({
   password: '',
   role: 'pracownik'
 })
+
 const showEditUserForm = ref(false)
 const editingUserId = ref(null)
 const isEditingUser = ref(false)
@@ -26,9 +27,48 @@ const editUserForm = ref({
   role: 'pracownik'
 })
 
+const showResetPasswordForm = ref(false)
+const resettingUserId = ref(null)
+const resettingUserName = ref('')
+const isResettingPassword = ref(false)
+const resetPasswordError = ref('')
+const resetPasswordSuccess = ref('')
+const resetPasswordForm = ref({
+  password: ''
+})
+
+const showEditProjectForm = ref(false)
+const editingProjectId = ref(null)
+const isEditingProject = ref(false)
+const editProjectError = ref('')
+const editProjectForm = ref({
+  title: '',
+  description: '',
+  status: 'Planowanie',
+  deadline: '',
+  userIds: []
+})
+
+const showEditTaskForm = ref(false)
+const editingTaskId = ref(null)
+const isEditingTask = ref(false)
+const editTaskError = ref('')
+const editTaskForm = ref({
+  projectId: null,
+  project: '',
+  title: '',
+  description: '',
+  status: 'Do zrobienia',
+  priority: 'Średni',
+  deadline: '',
+  assignedUserIds: []
+})
+
 const isCreatingUser = ref(false)
 const createUserError = ref('')
 const createUserSuccess = ref('')
+const userStatusError = ref('')
+const toggledUserIds = ref([])
 
 function openCreateUserForm() {
   createUserForm.value = {
@@ -53,6 +93,104 @@ function closeCreateUserForm() {
   showCreateUserForm.value = false
 }
 
+function openEditUserForm(user) {
+  editingUserId.value = user.id
+
+  editUserForm.value = {
+    name: user.name ?? '',
+    surname: user.surname ?? '',
+    login: user.login ?? '',
+    role: user.role ?? 'pracownik'
+  }
+
+  editUserError.value = ''
+  showEditUserForm.value = true
+}
+
+function closeEditUserForm() {
+  if (isEditingUser.value) {
+    return
+  }
+
+  showEditUserForm.value = false
+  editingUserId.value = null
+  editUserError.value = ''
+}
+
+function openResetPasswordForm(user) {
+  resettingUserId.value = user.id
+  resettingUserName.value =
+    `${user.name ?? ''} ${user.surname ?? ''}`.trim()
+  resetPasswordForm.value = {
+    password: ''
+  }
+  resetPasswordError.value = ''
+  showResetPasswordForm.value = true
+}
+
+function closeResetPasswordForm() {
+  if (isResettingPassword.value) {
+    return
+  }
+
+  showResetPasswordForm.value = false
+  resettingUserId.value = null
+  resettingUserName.value = ''
+  resetPasswordError.value = ''
+  resetPasswordForm.value = {
+    password: ''
+  }
+}
+
+function openEditProjectForm(project) {
+  editingProjectId.value = project.id
+  editProjectForm.value = {
+    title: project.title ?? '',
+    description: project.description ?? '',
+    status: project.status ?? 'Planowanie',
+    deadline: project.deadline ?? '',
+    userIds: [...(project.userIds ?? [])]
+  }
+  editProjectError.value = ''
+  showEditProjectForm.value = true
+}
+
+function closeEditProjectForm() {
+  if (isEditingProject.value) {
+    return
+  }
+
+  showEditProjectForm.value = false
+  editingProjectId.value = null
+  editProjectError.value = ''
+}
+
+function openEditTaskForm(task) {
+  editingTaskId.value = task.id
+  editTaskForm.value = {
+    projectId: task.projectId ?? null,
+    project: task.project ?? '',
+    title: task.title ?? '',
+    description: task.description ?? '',
+    status: task.status ?? 'Do zrobienia',
+    priority: task.priority ?? 'Średni',
+    deadline: task.deadline ?? '',
+    assignedUserIds: [...(task.assignedUserIds ?? [])]
+  }
+  editTaskError.value = ''
+  showEditTaskForm.value = true
+}
+
+function closeEditTaskForm() {
+  if (isEditingTask.value) {
+    return
+  }
+
+  showEditTaskForm.value = false
+  editingTaskId.value = null
+  editTaskError.value = ''
+}
+
 const isBoss = computed(() => {
   return loggedUser.value?.role === 'szef'
 })
@@ -60,7 +198,8 @@ const isBoss = computed(() => {
 const {
   data: usersFromApi,
   pending: usersLoading,
-  error: usersError
+  error: usersError,
+  refresh: refreshUsers
 } = await useFetch('/api/users', {
   default: () => []
 })
@@ -93,6 +232,20 @@ const tasks = computed(() => {
   return tasksFromApi.value ?? []
 })
 
+const workerUsers = computed(() => {
+  return users.value.filter(
+    (user) => user.role === 'pracownik'
+  )
+})
+
+const editableTaskUsers = computed(() => {
+  const project = projects.value.find(
+    (item) => item.id === editTaskForm.value.projectId
+  )
+
+  return project?.users ?? []
+})
+
 const filteredUsers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
 
@@ -101,7 +254,8 @@ const filteredUsers = computed(() => {
   }
 
   return users.value.filter((user) => {
-    const fullName = `${user.name ?? ''} ${user.surname ?? ''}`.toLowerCase()
+    const fullName =
+      `${user.name ?? ''} ${user.surname ?? ''}`.toLowerCase()
     const login = String(user.login ?? '').toLowerCase()
     const role = String(user.role ?? '').toLowerCase()
 
@@ -187,6 +341,7 @@ function goToProjects() {
 function goToTasks() {
   navigateTo('/tasks')
 }
+
 async function submitCreateUser() {
   if (isCreatingUser.value) {
     return
@@ -277,29 +432,6 @@ async function submitCreateUser() {
     isCreatingUser.value = false
   }
 }
-function openEditUserForm(user) {
-  editingUserId.value = user.id
-
-  editUserForm.value = {
-    name: user.name ?? '',
-    surname: user.surname ?? '',
-    login: user.login ?? '',
-    role: user.role ?? 'pracownik'
-  }
-
-  editUserError.value = ''
-  showEditUserForm.value = true
-}
-
-function closeEditUserForm() {
-  if (isEditingUser.value) {
-    return
-  }
-
-  showEditUserForm.value = false
-  editingUserId.value = null
-  editUserError.value = ''
-}
 
 async function submitEditUser() {
   if (
@@ -366,6 +498,332 @@ async function submitEditUser() {
     isEditingUser.value = false
   }
 }
+
+async function submitResetPassword() {
+  if (
+    !resettingUserId.value ||
+    isResettingPassword.value
+  ) {
+    return
+  }
+
+  resetPasswordError.value = ''
+  resetPasswordSuccess.value = ''
+
+  const password = resetPasswordForm.value.password.trim()
+
+  if (!password) {
+    resetPasswordError.value = 'Podaj nowe hasło.'
+    return
+  }
+
+  if (password.length < 8) {
+    resetPasswordError.value =
+      'Hasło musi mieć przynajmniej 8 znaków.'
+    return
+  }
+
+  const userName = resettingUserName.value
+
+  try {
+    isResettingPassword.value = true
+
+    await $fetch(
+      `/api/users/${resettingUserId.value}/password`,
+      {
+        method: 'PATCH',
+        body: {
+          password
+        }
+      }
+    )
+
+    isResettingPassword.value = false
+    closeResetPasswordForm()
+
+    resetPasswordSuccess.value =
+      `Hasło użytkownika ${userName} zostało zmienione.`
+
+    setTimeout(() => {
+      resetPasswordSuccess.value = ''
+    }, 3000)
+  } catch (error) {
+    console.error(
+      'Nie udało się zresetować hasła użytkownika:',
+      error
+    )
+
+    resetPasswordError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się zresetować hasła użytkownika.'
+  } finally {
+    isResettingPassword.value = false
+  }
+}
+
+async function submitEditProject() {
+  if (
+    !editingProjectId.value ||
+    isEditingProject.value
+  ) {
+    return
+  }
+
+  editProjectError.value = ''
+
+  const payload = {
+    title: editProjectForm.value.title.trim(),
+    description: editProjectForm.value.description.trim(),
+    status: editProjectForm.value.status,
+    deadline: editProjectForm.value.deadline,
+    userIds: [...editProjectForm.value.userIds]
+  }
+
+  if (!payload.title) {
+    editProjectError.value = 'Podaj nazwę projektu.'
+    return
+  }
+
+  if (!payload.status) {
+    editProjectError.value = 'Wybierz status projektu.'
+    return
+  }
+
+  if (!payload.deadline) {
+    editProjectError.value = 'Wybierz termin projektu.'
+    return
+  }
+
+  if (payload.userIds.length === 0) {
+    editProjectError.value =
+      'Przypisz przynajmniej jednego pracownika.'
+    return
+  }
+
+  try {
+    isEditingProject.value = true
+
+    const updatedProject = await $fetch(
+      `/api/projects/${editingProjectId.value}`,
+      {
+        method: 'PUT',
+        body: payload
+      }
+    )
+
+    projectsFromApi.value = (projectsFromApi.value ?? []).map(
+      (project) =>
+        project.id === updatedProject.id
+          ? updatedProject
+          : project
+    )
+
+    closeEditProjectForm()
+  } catch (error) {
+    console.error(
+      'Nie udało się zapisać projektu:',
+      error
+    )
+
+    editProjectError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się zapisać projektu.'
+  } finally {
+    isEditingProject.value = false
+  }
+}
+
+async function deleteProject(project) {
+  const confirmed = window.confirm(
+    `Czy na pewno chcesz usunąć projekt "${project.title}"?`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await $fetch(`/api/projects/${project.id}`, {
+      method: 'DELETE'
+    })
+
+    projectsFromApi.value = (projectsFromApi.value ?? []).filter(
+      (item) => item.id !== project.id
+    )
+
+    tasksFromApi.value = (tasksFromApi.value ?? []).filter(
+      (task) => task.projectId !== project.id
+    )
+  } catch (error) {
+    console.error(
+      'Nie udało się usunąć projektu:',
+      error
+    )
+  }
+}
+
+async function submitEditTask() {
+  if (!editingTaskId.value || isEditingTask.value) {
+    return
+  }
+
+  editTaskError.value = ''
+
+  const payload = {
+    title: editTaskForm.value.title.trim(),
+    description: editTaskForm.value.description.trim(),
+    status: editTaskForm.value.status,
+    priority: editTaskForm.value.priority,
+    deadline: editTaskForm.value.deadline,
+    assignedUserIds: [...editTaskForm.value.assignedUserIds]
+  }
+
+  if (!payload.title) {
+    editTaskError.value = 'Podaj tytuł zadania.'
+    return
+  }
+
+  if (!payload.description) {
+    editTaskError.value = 'Podaj opis zadania.'
+    return
+  }
+
+  if (!payload.status) {
+    editTaskError.value = 'Wybierz status zadania.'
+    return
+  }
+
+  if (!payload.priority) {
+    editTaskError.value = 'Wybierz priorytet zadania.'
+    return
+  }
+
+  if (!payload.deadline) {
+    editTaskError.value =
+      'Wybierz termin wykonania zadania.'
+    return
+  }
+
+  if (payload.assignedUserIds.length === 0) {
+    editTaskError.value =
+      'Przypisz przynajmniej jedną osobę.'
+    return
+  }
+
+  try {
+    isEditingTask.value = true
+
+    const updatedTask = await $fetch(
+      `/api/tasks/${editingTaskId.value}`,
+      {
+        method: 'PUT',
+        body: payload
+      }
+    )
+
+    tasksFromApi.value = (tasksFromApi.value ?? []).map(
+      (task) =>
+        task.id === updatedTask.id
+          ? updatedTask
+          : task
+    )
+
+    closeEditTaskForm()
+  } catch (error) {
+    console.error(
+      'Nie udało się zapisać zadania:',
+      error
+    )
+
+    editTaskError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się zapisać zadania.'
+  } finally {
+    isEditingTask.value = false
+  }
+}
+
+async function deleteTask(task) {
+  const confirmed = window.confirm(
+    `Czy na pewno chcesz usunąć zadanie "${task.title}"?`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await $fetch(`/api/tasks/${task.id}`, {
+      method: 'DELETE'
+    })
+
+    tasksFromApi.value = (tasksFromApi.value ?? []).filter(
+      (item) => item.id !== task.id
+    )
+  } catch (error) {
+    console.error(
+      'Nie udało się usunąć zadania:',
+      error
+    )
+  }
+}
+
+async function handleUserStatusToggle(user) {
+  if (toggledUserIds.value.includes(user.id)) {
+    return
+  }
+
+  userStatusError.value = ''
+
+  const previousUsers = [...(usersFromApi.value ?? [])]
+  const nextStatus = !user.isActive
+
+  toggledUserIds.value = [
+    ...toggledUserIds.value,
+    user.id
+  ]
+
+  usersFromApi.value = previousUsers.map((item) => {
+    if (item.id !== user.id) {
+      return item
+    }
+
+    return {
+      ...item,
+      isActive: nextStatus
+    }
+  })
+
+  try {
+    await $fetch(
+      `/api/users/${user.id}/status`,
+      {
+        method: 'PATCH',
+        body: {
+          isActive: nextStatus
+        }
+      }
+    )
+
+    await refreshUsers()
+  } catch (error) {
+    usersFromApi.value = previousUsers
+
+    console.error(
+      'Nie udało się zmienić statusu użytkownika.',
+      error
+    )
+
+    userStatusError.value =
+      error?.data?.statusMessage ??
+      'Nie udało się zmienić statusu użytkownika.'
+  } finally {
+    toggledUserIds.value =
+      toggledUserIds.value.filter(
+        (userId) => userId !== user.id
+      )
+  }
+}
 </script>
 
 <template>
@@ -394,20 +852,28 @@ async function submitEditUser() {
           </p>
         </div>
 
-       <button
-  type="button"
-  class="admin-primary-button"
-  @click="openCreateUserForm"
->
-  Dodaj pracownika
-</button>
+        <button
+          type="button"
+          class="admin-primary-button"
+          @click="openCreateUserForm"
+        >
+          Dodaj pracownika
+        </button>
       </header>
+
       <p
-  v-if="createUserSuccess"
-  class="admin-success-message"
->
-  {{ createUserSuccess }}
-</p>
+        v-if="createUserSuccess"
+        class="admin-success-message"
+      >
+        {{ createUserSuccess }}
+      </p>
+
+      <p
+        v-if="resetPasswordSuccess"
+        class="admin-success-message"
+      >
+        {{ resetPasswordSuccess }}
+      </p>
 
       <section class="admin-stats">
         <article
@@ -436,7 +902,6 @@ async function submitEditUser() {
       </nav>
 
       <section class="admin-content">
-        <!-- UŻYTKOWNICY -->
         <div v-if="activeTab === 'users'">
           <div class="admin-section-header">
             <div>
@@ -464,6 +929,10 @@ async function submitEditUser() {
             Nie udało się pobrać użytkowników.
           </p>
 
+          <p v-else-if="userStatusError" class="form-error">
+            {{ userStatusError }}
+          </p>
+
           <p
             v-else-if="filteredUsers.length === 0"
             class="admin-empty-state"
@@ -475,7 +944,7 @@ async function submitEditUser() {
             v-else
             class="admin-table-wrapper"
           >
-            <table class="admin-table">
+            <table class="admin-table admin-table--users">
               <thead>
                 <tr>
                   <th>Użytkownik</th>
@@ -518,8 +987,13 @@ async function submitEditUser() {
                   </td>
 
                   <td>
-                    <span class="admin-status-badge">
-                      Aktywny
+                    <span
+                      class="admin-status-badge"
+                      :class="{
+                        'admin-status-badge--inactive': !user.isActive
+                      }"
+                    >
+                      {{ user.isActive ? 'Aktywny' : 'Nieaktywny' }}
                     </span>
                   </td>
 
@@ -529,19 +1003,33 @@ async function submitEditUser() {
                         Szczegóły
                       </button>
 
-                        <button
-                                type="button"
-                                @click="openEditUserForm(user)"
-                                >
-                                Edytuj
-                        </button>
+                      <button
+                        type="button"
+                        @click="openEditUserForm(user)"
+                      >
+                        Edytuj
+                      </button>
+
+                      <button
+                        type="button"
+                        @click="openResetPasswordForm(user)"
+                      >
+                        Reset hasła
+                      </button>
 
                       <button
                         type="button"
                         class="admin-danger-button"
-                        disabled
+                        :disabled="toggledUserIds.includes(user.id)"
+                        @click="handleUserStatusToggle(user)"
                       >
-                        Dezaktywuj
+                        {{
+                          toggledUserIds.includes(user.id)
+                            ? 'Zapisywanie...'
+                            : user.isActive
+                              ? 'Dezaktywuj'
+                              : 'Aktywuj'
+                        }}
                       </button>
                     </div>
                   </td>
@@ -551,7 +1039,6 @@ async function submitEditUser() {
           </div>
         </div>
 
-        <!-- PROJEKTY -->
         <div v-else-if="activeTab === 'projects'">
           <div class="admin-section-header">
             <div>
@@ -590,7 +1077,7 @@ async function submitEditUser() {
             v-else
             class="admin-table-wrapper"
           >
-            <table class="admin-table">
+            <table class="admin-table admin-table--projects">
               <thead>
                 <tr>
                   <th>Projekt</th>
@@ -637,7 +1124,7 @@ async function submitEditUser() {
 
                       <button
                         type="button"
-                        @click="openProject(project.id)"
+                        @click="openEditProjectForm(project)"
                       >
                         Edytuj
                       </button>
@@ -645,7 +1132,7 @@ async function submitEditUser() {
                       <button
                         type="button"
                         class="admin-danger-button"
-                        disabled
+                        @click="deleteProject(project)"
                       >
                         Usuń
                       </button>
@@ -657,7 +1144,6 @@ async function submitEditUser() {
           </div>
         </div>
 
-        <!-- ZADANIA -->
         <div v-else-if="activeTab === 'tasks'">
           <div class="admin-section-header">
             <div>
@@ -696,7 +1182,7 @@ async function submitEditUser() {
             v-else
             class="admin-table-wrapper"
           >
-            <table class="admin-table">
+            <table class="admin-table admin-table--tasks">
               <thead>
                 <tr>
                   <th>Zadanie</th>
@@ -753,7 +1239,7 @@ async function submitEditUser() {
 
                       <button
                         type="button"
-                        @click="openTask(task.id)"
+                        @click="openEditTaskForm(task)"
                       >
                         Edytuj
                       </button>
@@ -761,7 +1247,7 @@ async function submitEditUser() {
                       <button
                         type="button"
                         class="admin-danger-button"
-                        @click="openTask(task.id)"
+                        @click="deleteTask(task)"
                       >
                         Usuń
                       </button>
@@ -773,7 +1259,6 @@ async function submitEditUser() {
           </div>
         </div>
 
-        
         <div
           v-else
           class="admin-placeholder"
@@ -786,217 +1271,566 @@ async function submitEditUser() {
         </div>
       </section>
     </template>
+
     <div
-  v-if="showCreateUserForm"
-  class="admin-modal"
-  @click.self="closeCreateUserForm"
->
- <form
-  class="admin-modal__content"
-  @submit.prevent="submitCreateUser"
->
-    <div class="admin-modal__header">
-      <div>
-        <h2>Dodaj pracownika</h2>
-
-        <p>
-          Utwórz nowe konto użytkownika.
-        </p>
-      </div>
-
-      <button
-        type="button"
-        class="admin-modal__close"
-        @click="closeCreateUserForm"
-      >
-        ×
-      </button>
-    </div>
-
-    <label class="admin-form-field">
-      Imię
-
-      <input
-        v-model="createUserForm.name"
-        type="text"
-        placeholder="Wpisz imię"
-      >
-    </label>
-
-    <label class="admin-form-field">
-      Nazwisko
-
-      <input
-        v-model="createUserForm.surname"
-        type="text"
-        placeholder="Wpisz nazwisko"
-      >
-    </label>
-
-    <label class="admin-form-field">
-      Login
-
-      <input
-        v-model="createUserForm.login"
-        type="text"
-        placeholder="Wpisz login"
-      >
-    </label>
-
-    <label class="admin-form-field">
-      Hasło początkowe
-
-      <input
-        v-model="createUserForm.password"
-        type="password"
-        placeholder="Wpisz hasło"
-      >
-    </label>
-
-    <label class="admin-form-field">
-      Rola
-
-      <select v-model="createUserForm.role">
-        <option value="pracownik">
-          Pracownik
-        </option>
-
-        <option value="szef">
-          Szef
-        </option>
-      </select>
-    </label>
-
-    <p
-  v-if="createUserError"
-  class="form-error"
->
-  {{ createUserError }}
-</p>
-
-    <div class="admin-modal__actions">
-    <button
-  type="button"
-  class="admin-secondary-button"
-  :disabled="isCreatingUser"
-  @click="closeCreateUserForm"
->
-  Anuluj
-</button>
-
-     <button
-  type="submit"
-  class="admin-primary-button"
-  :disabled="isCreatingUser"
->
-  {{
-    isCreatingUser
-      ? 'Tworzenie konta...'
-      : 'Utwórz konto'
-  }}
-</button>
-    </div>
-  </form>
-</div>
-<div
-  v-if="showEditUserForm"
-  class="admin-modal"
-  @click.self="closeEditUserForm"
->
-  <form
-    class="admin-modal__content"
-    @submit.prevent="submitEditUser"
-  >
-    <div class="admin-modal__header">
-      <div>
-        <h2>Edytuj użytkownika</h2>
-
-        <p>
-          Zmień dane konta użytkownika.
-        </p>
-      </div>
-
-      <button
-        type="button"
-        class="admin-modal__close"
-        @click="closeEditUserForm"
-      >
-        ×
-      </button>
-    </div>
-
-    <label class="admin-form-field">
-      Imię
-
-      <input
-        v-model="editUserForm.name"
-        type="text"
-      >
-    </label>
-
-    <label class="admin-form-field">
-      Nazwisko
-
-      <input
-        v-model="editUserForm.surname"
-        type="text"
-      >
-    </label>
-
-    <label class="admin-form-field">
-      Login
-
-      <input
-        v-model="editUserForm.login"
-        type="text"
-      >
-    </label>
-
-    <label class="admin-form-field">
-      Rola
-
-      <select v-model="editUserForm.role">
-        <option value="pracownik">
-          Pracownik
-        </option>
-
-        <option value="szef">
-          Szef
-        </option>
-      </select>
-    </label>
-
-    <p
-      v-if="editUserError"
-      class="form-error"
+      v-if="showCreateUserForm"
+      class="admin-modal"
+      @click.self="closeCreateUserForm"
     >
-      {{ editUserError }}
-    </p>
-
-    <div class="admin-modal__actions">
-      <button
-        type="button"
-        class="admin-secondary-button"
-        :disabled="isEditingUser"
-        @click="closeEditUserForm"
+      <form
+        class="admin-modal__content"
+        @submit.prevent="submitCreateUser"
       >
-        Anuluj
-      </button>
+        <div class="admin-modal__header">
+          <div>
+            <h2>Dodaj pracownika</h2>
 
-      <button
-        type="submit"
-        class="admin-primary-button"
-        :disabled="isEditingUser"
-      >
-        {{
-          isEditingUser
-            ? 'Zapisywanie...'
-            : 'Zapisz zmiany'
-        }}
-      </button>
+            <p>
+              Utwórz nowe konto użytkownika.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="admin-modal__close"
+            @click="closeCreateUserForm"
+          >
+            ×
+          </button>
+        </div>
+
+        <label class="admin-form-field">
+          Imię
+
+          <input
+            v-model="createUserForm.name"
+            type="text"
+            placeholder="Wpisz imię"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Nazwisko
+
+          <input
+            v-model="createUserForm.surname"
+            type="text"
+            placeholder="Wpisz nazwisko"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Login
+
+          <input
+            v-model="createUserForm.login"
+            type="text"
+            placeholder="Wpisz login"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Hasło początkowe
+
+          <input
+            v-model="createUserForm.password"
+            type="password"
+            placeholder="Wpisz hasło"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Rola
+
+          <select v-model="createUserForm.role">
+            <option value="pracownik">
+              Pracownik
+            </option>
+
+            <option value="szef">
+              Szef
+            </option>
+          </select>
+        </label>
+
+        <p
+          v-if="createUserError"
+          class="form-error"
+        >
+          {{ createUserError }}
+        </p>
+
+        <div class="admin-modal__actions">
+          <button
+            type="button"
+            class="admin-secondary-button"
+            :disabled="isCreatingUser"
+            @click="closeCreateUserForm"
+          >
+            Anuluj
+          </button>
+
+          <button
+            type="submit"
+            class="admin-primary-button"
+            :disabled="isCreatingUser"
+          >
+            {{
+              isCreatingUser
+                ? 'Tworzenie konta...'
+                : 'Utwórz konto'
+            }}
+          </button>
+        </div>
+      </form>
     </div>
-  </form>
-</div>
+
+    <div
+      v-if="showEditUserForm"
+      class="admin-modal"
+      @click.self="closeEditUserForm"
+    >
+      <form
+        class="admin-modal__content"
+        @submit.prevent="submitEditUser"
+      >
+        <div class="admin-modal__header">
+          <div>
+            <h2>Edytuj użytkownika</h2>
+
+            <p>
+              Zmień dane konta użytkownika.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="admin-modal__close"
+            @click="closeEditUserForm"
+          >
+            ×
+          </button>
+        </div>
+
+        <label class="admin-form-field">
+          Imię
+
+          <input
+            v-model="editUserForm.name"
+            type="text"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Nazwisko
+
+          <input
+            v-model="editUserForm.surname"
+            type="text"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Login
+
+          <input
+            v-model="editUserForm.login"
+            type="text"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Rola
+
+          <select v-model="editUserForm.role">
+            <option value="pracownik">
+              Pracownik
+            </option>
+
+            <option value="szef">
+              Szef
+            </option>
+          </select>
+        </label>
+
+        <p
+          v-if="editUserError"
+          class="form-error"
+        >
+          {{ editUserError }}
+        </p>
+
+        <div class="admin-modal__actions">
+          <button
+            type="button"
+            class="admin-secondary-button"
+            :disabled="isEditingUser"
+            @click="closeEditUserForm"
+          >
+            Anuluj
+          </button>
+
+          <button
+            type="submit"
+            class="admin-primary-button"
+            :disabled="isEditingUser"
+          >
+            {{
+              isEditingUser
+                ? 'Zapisywanie...'
+                : 'Zapisz zmiany'
+            }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div
+      v-if="showResetPasswordForm"
+      class="admin-modal"
+      @click.self="closeResetPasswordForm"
+    >
+      <form
+        class="admin-modal__content"
+        @submit.prevent="submitResetPassword"
+      >
+        <div class="admin-modal__header">
+          <div>
+            <h2>Reset hasła</h2>
+
+            <p>
+              Ustaw nowe hasło dla:
+            </p>
+
+            <p>
+              <strong>{{ resettingUserName }}</strong>
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="admin-modal__close"
+            :disabled="isResettingPassword"
+            @click="closeResetPasswordForm"
+          >
+            ×
+          </button>
+        </div>
+
+        <label class="admin-form-field">
+          Nowe hasło
+
+          <input
+            v-model="resetPasswordForm.password"
+            type="password"
+            placeholder="Wpisz nowe hasło"
+          >
+        </label>
+
+        <p
+          v-if="resetPasswordError"
+          class="form-error"
+        >
+          {{ resetPasswordError }}
+        </p>
+
+        <div class="admin-modal__actions">
+          <button
+            type="button"
+            class="admin-secondary-button"
+            :disabled="isResettingPassword"
+            @click="closeResetPasswordForm"
+          >
+            Anuluj
+          </button>
+
+          <button
+            type="submit"
+            class="admin-primary-button"
+            :disabled="isResettingPassword"
+          >
+            {{
+              isResettingPassword
+                ? 'Zapisywanie...'
+                : 'Ustaw nowe hasło'
+            }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div
+      v-if="showEditProjectForm"
+      class="admin-modal"
+      @click.self="closeEditProjectForm"
+    >
+      <form
+        class="admin-modal__content"
+        @submit.prevent="submitEditProject"
+      >
+        <div class="admin-modal__header">
+          <div>
+            <h2>Edytuj projekt</h2>
+
+            <p>
+              Zmień dane projektu bez wychodzenia z panelu.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="admin-modal__close"
+            @click="closeEditProjectForm"
+          >
+            ×
+          </button>
+        </div>
+
+        <label class="admin-form-field">
+          Nazwa projektu
+
+          <input
+            v-model="editProjectForm.title"
+            type="text"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Opis
+
+          <input
+            v-model="editProjectForm.description"
+            type="text"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Status
+
+          <select v-model="editProjectForm.status">
+            <option value="Planowanie">
+              Planowanie
+            </option>
+            <option value="W trakcie">
+              W trakcie
+            </option>
+            <option value="Gotowe">
+              Gotowe
+            </option>
+          </select>
+        </label>
+
+        <label class="admin-form-field">
+          Termin
+
+          <input
+            v-model="editProjectForm.deadline"
+            type="date"
+          >
+        </label>
+        <fieldset class="admin-form-people">
+          <legend>Zespół</legend>
+          <div class="admin-form-people__list">
+            <label
+              v-for="user in workerUsers"
+              :key="user.id"
+              class="admin-form-person"
+            >
+              <input
+                v-model="editProjectForm.userIds"
+                type="checkbox"
+                :value="user.id"
+              >
+              <span class="admin-form-person__avatar">
+                {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
+              </span>
+              <span class="admin-form-person__details">
+                <strong>
+                  {{ user.name }} {{ user.surname }}
+                </strong>
+                <small>{{ user.role }}</small>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <p
+          v-if="editProjectError"
+          class="form-error"
+        >
+          {{ editProjectError }}
+        </p>
+
+        <div class="admin-modal__actions">
+          <button
+            type="button"
+            class="admin-secondary-button"
+            :disabled="isEditingProject"
+            @click="closeEditProjectForm"
+          >
+            Anuluj
+          </button>
+
+          <button
+            type="submit"
+            class="admin-primary-button"
+            :disabled="isEditingProject"
+          >
+            {{
+              isEditingProject
+                ? 'Zapisywanie...'
+                : 'Zapisz zmiany'
+            }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div
+      v-if="showEditTaskForm"
+      class="admin-modal"
+      @click.self="closeEditTaskForm"
+    >
+      <form
+        class="admin-modal__content"
+        @submit.prevent="submitEditTask"
+      >
+        <div class="admin-modal__header">
+          <div>
+            <h2>Edytuj zadanie</h2>
+
+            <p>
+              Projekt: {{ editTaskForm.project }}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="admin-modal__close"
+            @click="closeEditTaskForm"
+          >
+            ×
+          </button>
+        </div>
+
+        <label class="admin-form-field">
+          Tytuł zadania
+
+          <input
+            v-model="editTaskForm.title"
+            type="text"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Opis
+
+          <input
+            v-model="editTaskForm.description"
+            type="text"
+          >
+        </label>
+
+        <label class="admin-form-field">
+          Status
+
+          <select v-model="editTaskForm.status">
+            <option value="Do zrobienia">
+              Do zrobienia
+            </option>
+            <option value="W trakcie">
+              W trakcie
+            </option>
+            <option value="Zakończone">
+              Zakończone
+            </option>
+            <option value="Zakonczone">
+              Zakonczone
+            </option>
+          </select>
+        </label>
+
+        <label class="admin-form-field">
+          Priorytet
+
+          <select v-model="editTaskForm.priority">
+            <option value="Niski">
+              Niski
+            </option>
+            <option value="Średni">
+              Średni
+            </option>
+            <option value="Wysoki">
+              Wysoki
+            </option>
+          </select>
+        </label>
+
+        <label class="admin-form-field">
+          Termin
+
+          <input
+            v-model="editTaskForm.deadline"
+            type="date"
+          >
+        </label>
+        <fieldset class="admin-form-people">
+          <legend>Osoby przypisane do zadania</legend>
+          <div class="admin-form-people__list">
+            <label
+              v-for="user in editableTaskUsers"
+              :key="user.id"
+              class="admin-form-person"
+            >
+              <input
+                v-model="editTaskForm.assignedUserIds"
+                type="checkbox"
+                :value="user.id"
+              >
+              <span class="admin-form-person__avatar">
+                {{ user.name?.charAt(0) }}{{ user.surname?.charAt(0) }}
+              </span>
+              <span class="admin-form-person__details">
+                <strong>
+                  {{ user.name }} {{ user.surname }}
+                </strong>
+                <small>{{ user.role }}</small>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <p
+          v-if="editTaskError"
+          class="form-error"
+        >
+          {{ editTaskError }}
+        </p>
+
+        <div class="admin-modal__actions">
+          <button
+            type="button"
+            class="admin-secondary-button"
+            :disabled="isEditingTask"
+            @click="closeEditTaskForm"
+          >
+            Anuluj
+          </button>
+
+          <button
+            type="submit"
+            class="admin-primary-button"
+            :disabled="isEditingTask"
+          >
+            {{
+              isEditingTask
+                ? 'Zapisywanie...'
+                : 'Zapisz zmiany'
+            }}
+          </button>
+        </div>
+      </form>
+    </div>
   </section>
 </template>
 
@@ -1325,7 +2159,6 @@ async function submitEditUser() {
   color: #b91c1c;
 }
 
-/* Tabela użytkowników */
 .admin-table--users {
   table-layout: fixed;
 }
@@ -1355,7 +2188,6 @@ async function submitEditUser() {
   width: 20%;
 }
 
-/* Tabela projektów */
 .admin-table--projects {
   table-layout: fixed;
 }
@@ -1387,7 +2219,6 @@ async function submitEditUser() {
   width: 19%;
 }
 
-/* Kompaktowa tabela zadań — wszystkie kolumny mieszczą się w panelu */
 .admin-table--tasks {
   table-layout: fixed;
 }
@@ -1444,6 +2275,7 @@ async function submitEditUser() {
   margin: 0;
   color: #6b7280;
 }
+
 .admin-modal {
   position: fixed;
   inset: 0;
@@ -1600,6 +2432,7 @@ async function submitEditUser() {
     text-align: left;
   }
 }
+
 .admin-success-message {
   margin: 0 0 20px;
   padding: 12px 14px;
@@ -1609,4 +2442,93 @@ async function submitEditUser() {
   font-size: 14px;
   font-weight: 600;
 }
+
+.admin-form-people {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.admin-form-people legend {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.admin-form-people__list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-form-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-form-person:hover {
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+}
+
+.admin-form-person:has(input:checked) {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+.admin-form-person input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #1d4ed8;
+  flex-shrink: 0;
+}
+
+.admin-form-person__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.admin-form-person__details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-form-person__details strong {
+  color: #0f172a;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.admin-form-person__details small {
+  color: #64748b;
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
+.admin-status-badge--inactive {
+  background: #f3f4f6;
+  color: #6b7280;
+}
 </style>
+

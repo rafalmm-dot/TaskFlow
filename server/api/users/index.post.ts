@@ -103,6 +103,7 @@ export default defineEventHandler(async (event) => {
       surname: true,
       login: true,
       role: true,
+      is_active: true,
       created_at: true
     }
   })
@@ -113,6 +114,7 @@ export default defineEventHandler(async (event) => {
     surname: createdUser.surname,
     login: createdUser.login,
     role: createdUser.role,
+    isActive: createdUser.is_active,
     createdAt: createdUser.created_at
       .toISOString()
       .slice(0, 10)
